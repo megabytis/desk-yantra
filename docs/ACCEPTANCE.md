@@ -105,3 +105,7 @@ GitHub Actions was checked through the public API and job logs. [Migration run 4
 Initial sandboxed network checks could not create sockets; the Python and browser fixture checks above ran with approved escalation. An initial restricted Python invocation was interrupted after stalling on socket-dependent tests; its partial output is not counted as verification. No hosted-provider, native Ollama, Docker isolation, clean Arch installation or desktop verification was performed in this milestone. Project license selection, dependency notices, release supply-chain controls, state upgrade/rollback tests and Phase 1 security review remain open. No upstream source was copied.
 
 Final completed runner verification: `.venv/bin/python scripts/check_ui.py` exited 0 with **4 passed (1.1m)** after the cleanup and TCP port-reuse changes. These are scripted model fixtures with real disposable host effects. Post-run HTTP connection to port 8765 was refused, confirming the application listener was closed.
+
+## Phase 1 threat model — 2026-11-20
+
+Contributor: **OpenAI Codex (GPT-6-sol)**. GitHub Actions run [44708120050](https://github.com/megabytis/desk-yantra/actions/runs/44708120050) for commit `b01b9b5` was checked via the public Actions API and reported `completed` / `success`. Added `docs/THREAT-MODEL.md` with the trusted single-user target, eight execution/data boundaries, existing controls, residual risks and concrete next tests. This documentation change has no new runtime security claim; independent review remains open. `git diff --check` passed.
