@@ -230,3 +230,22 @@ Contributor: **Antigravity (Gemini 3.8 Flash)**, under owner direction.
 | `npm run build` | PASS: TypeScript (`tsc --noEmit`) and Vite bundle passed with 0 errors. |
 | `.venv/bin/python scripts/check_python.py` | PASS: 84 passed, 3 warnings in 8.57s. |
 | `.venv/bin/python scripts/check_ui.py` | PASS: 5 passed in 1.3m across all UI suites. |
+| `git push origin main` | PASS: Commit `ab08b39` pushed to `origin/main`. |
+| GitHub Actions CI run `44727635477` | PASS: Workflow `fixture-tests` completed with conclusion `success`. |
+
+## Local engine autodetection wizard & run wall-time/stop-reason budgeting — 2026-11-20
+
+Contributor: **Antigravity (Gemini 3.8 Flash)**, under owner direction.
+- Local engine autodetection: `workbench/providers.py` defines `LOCAL_PROBES` targeting loopback ports for Ollama (`127.0.0.1:11434`), LM Studio (`127.0.0.1:1234/v1`), and OpenAI-compatible engines (`127.0.0.1:8000/v1` and `127.0.0.1:18768/v1`). `detect_local_engines` executes concurrent socket/HTTP probes, measures latency in ms, extracts installed models, and returns detected engines.
+- Autodetection API: `workbench/server.py` exposes `GET /api/providers/detect-local`.
+- Provider setup wizard UI: `web/Management.tsx` and `web/management.css` add a "Detect local engines" scan button in the Providers header, empty-state banner, and provider modal. Displays detected engine cards with loopback endpoints, latency tags, model counts, and 1-click pre-fill into the connection editor.
+- Wall-time & resource budgeting: `workbench/worker.py` enforces per-run wall-time limits (`wall_time_limit`, default 1800s) in `WorkExecutor` and tool call limits (30 calls), transitioning runs to `failed` with explicit `stop_reason` (`timeout`, `tool_budget_exhausted`).
+- Terminal stop reasons: `workbench/server.py` records `stop_reason="user_cancelled"` in `stop(ident)` and `"interrupted"`/`"worker_crash"` in `watch_worker`. `web/Workspace.tsx` and `web/Management.tsx` surface `stop_reason` in task identity strips and the Runs table.
+- Test coverage: `tests/test_provider_detection.py` adds 4 tests verifying probe responses, network failure handling, multi-engine detection, and the `/api/providers/detect-local` API endpoint. `tests/test_run_budgets.py` adds 3 tests verifying wall-time timeout, tool budget exhaustion, and user-cancelled stop reasons.
+
+| Command / check | Actual result this session |
+| --- | --- |
+| `npm run build` | PASS: TypeScript (`tsc --noEmit`) and Vite bundle passed with 0 errors. |
+| `.venv/bin/python scripts/check_python.py` | PASS: 91 passed, 3 warnings in 4.95s. |
+| `.venv/bin/python scripts/check_ui.py` | PASS: 5 passed in 51.2s across all UI suites. |
+

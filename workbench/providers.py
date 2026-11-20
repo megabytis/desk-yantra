@@ -104,3 +104,83 @@ ADAPTERS = {"anthropic": Anthropic, "gemini": Gemini, "ollama": Ollama}
 
 def adapter(connection):
     return ADAPTERS.get(connection["type"], Adapter)(connection)
+
+
+LOCAL_PROBES = [
+    {
+        "type": "ollama",
+        "name": "Ollama",
+        "url": "http://127.0.0.1:11434",
+        "path": "/api/tags",
+        "collection": "models",
+        "id_key": "name",
+    },
+    {
+        "type": "lmstudio",
+        "name": "LM Studio",
+        "url": "http://127.0.0.1:1234/v1",
+        "path": "/models",
+        "collection": "data",
+        "id_key": "id",
+    },
+    {
+        "type": "compatible",
+        "name": "Local Compatible (Port 8000)",
+        "url": "http://127.0.0.1:8000/v1",
+        "path": "/models",
+        "collection": "data",
+        "id_key": "id",
+    },
+    {
+        "type": "compatible",
+        "name": "Local Compatible (Port 18768)",
+        "url": "http://127.0.0.1:18768/v1",
+        "path": "/models",
+        "collection": "data",
+        "id_key": "id",
+    },
+]
+
+
+def probe_local_engine(probe, timeout=1.0):
+    import time
+    started = time.perf_counter()
+    url = probe["url"].rstrip("/") + probe["path"]
+    try:
+        with httpx.Client(timeout=timeout, follow_redirects=False) as client:
+            resp = client.get(url)
+            if resp.status_code == 200:
+                body = resp.json()
+                items = body.get(probe["collection"], [])
+                models = [
+                    m[probe["id_key"]]
+                    for m in items
+                    if isinstance(m, dict) and probe["id_key"] in m
+                ][:15]
+                latency_ms = round((time.perf_counter() - started) * 1000)
+                return {
+                    "type": probe["type"],
+                    "name": probe["name"],
+                    "url": probe["url"],
+                    "detected": True,
+                    "latency_ms": latency_ms,
+                    "model_count": len(items),
+                    "models": models,
+                }
+    except Exception:
+        pass
+    return None
+
+
+def detect_local_engines(timeout=1.0):
+    import concurrent.futures
+    detected = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(LOCAL_PROBES)) as pool:
+        futures = [pool.submit(probe_local_engine, p, timeout) for p in LOCAL_PROBES]
+        for f in concurrent.futures.as_completed(futures):
+            res = f.result()
+            if res:
+                detected.append(res)
+    detected.sort(key=lambda x: (x["type"], x["url"]))
+    return detected
+

@@ -78,3 +78,4 @@ def test_catalog_models_preserved_during_discovery(monkeypatch):
     model_ids = [m["id"] for m in saved["models"]]
     assert "discovered-model" in model_ids
     assert "catalog-saved" in model_ids
+

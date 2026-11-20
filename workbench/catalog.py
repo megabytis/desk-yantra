@@ -294,3 +294,4 @@ def find_catalog_model(provider_type: str, model_id: str):
         if model["id"] == model_id:
             return model
     return None
+

@@ -58,12 +58,20 @@ class WorkExecutor(ToolExecutor):
     def __init__(self, run_id):
         self.run_id = run_id
         self.calls = 0
+        self.started = time.time()
 
     def __call__(self, action, conversation=None):
         self.calls += 1
         run = get("runs", self.run_id)
-        if self.calls > 30 or run["status"] == "stopped":
-            raise ValueError("Tool budget exhausted or run stopped")
+        if run["status"] == "stopped":
+            raise ValueError("Run stopped")
+        wall_time_limit = run.get("wall_time_limit", 1800)
+        if time.time() - self.started > wall_time_limit:
+            transition_run(self.run_id, ("running",), "failed", {"stop_reason": "timeout"})
+            raise TimeoutError(f"Run wall-time budget of {wall_time_limit}s exhausted")
+        if self.calls > 30:
+            transition_run(self.run_id, ("running",), "failed", {"stop_reason": "tool_budget_exhausted"})
+            raise ValueError("Tool budget exhausted (max 30 calls)")
         consume_budget(run.get("root_run", run["id"]))
         if action.op not in allowed_operations(run, get("grants", run["grant"])):
             return WorkResult.from_text("Operation is outside this task's current grants", is_error=True)
@@ -233,10 +241,12 @@ def run_worker(run_id):
             commands=[item['data'] for item in events(run_id) if item['kind']=='command_result']
             run['last_command']=commands[-1] if commands else None
             run['outcome']='needs_review' if commands and commands[-1].get('exit_status')!=0 else 'finished'
-            transition_run(run_id,('running',),'completed',{'last_command':run['last_command'],'outcome':run['outcome']})
+            stop_reason = 'review' if run['outcome'] == 'needs_review' else 'completed'
+            transition_run(run_id,('running',),'completed',{'last_command':run['last_command'],'outcome':run['outcome'],'stop_reason':stop_reason})
     except Exception as error:
         event(run_id, "error", str(error))
-        transition_run(run_id,('queued','running'),'failed')
+        reason = "timeout" if isinstance(error, TimeoutError) else "tool_budget_exhausted" if "budget exhausted" in str(error).lower() else "failed"
+        transition_run(run_id,('queued','running'),'failed',{'stop_reason':reason})
 
 
 if __name__ == "__main__":

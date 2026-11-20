@@ -16,7 +16,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from .providers import DEFAULTS, adapter, public
+from .providers import DEFAULTS, adapter, public, detect_local_engines
 from .catalog import get_catalog, find_catalog_model
 from .client import companion
 from . import store
@@ -187,6 +187,11 @@ def discover(ident: str):
     return {"models": models, "message": "Models refreshed" if models else "Server returned an empty model list; install a model or enter an ID manually"}
 
 
+@app.get("/api/providers/detect-local")
+def api_detect_local():
+    return {"engines": detect_local_engines()}
+
+
 @app.post("/api/providers/{ident}/manual")
 def manual(ident: str, body: dict):
     provider = get("providers", ident)
@@ -350,7 +355,8 @@ def watch_worker(ident, process):
     except Exception:
         pass
     status = "review" if uncertain or not cleanup_confirmed else "failed"
-    changed = transition_run(ident, ("queued", "running", "approval"), status)
+    stop_reason = "interrupted" if status == "review" else "worker_crash"
+    changed = transition_run(ident, ("queued", "running", "approval"), status, {"stop_reason": stop_reason})
     if changed:
         for approval in all_objects("approvals"):
             if approval.get("run") == ident and approval.get("status") in ("pending", "approved"):
@@ -429,7 +435,7 @@ def resolve_review(ident:str,body:dict):
 
 @app.post("/api/runs/{ident}/stop")
 def stop(ident: str):
-    run = transition_run(ident, ("queued", "running", "approval", "paused", "review"), "stopped")
+    run = transition_run(ident, ("queued", "running", "approval", "paused", "review"), "stopped", {"stop_reason": "user_cancelled"})
     if run is None:
         return get("runs", ident)
     for approval in all_objects("approvals"):
