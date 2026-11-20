@@ -145,3 +145,7 @@ Contributor: **OpenAI Codex (GPT-6-sol)**. The app, companion and workers are se
 ## Rotated-token redaction — 2026-11-20
 
 Contributor: **OpenAI Codex (GPT-6-sol)**. Long-lived processes now include the current shared token in the sensitive-value list after rotation. The independent subprocess regression observes the new token and confirms `redact(new_token)` returns `[REDACTED]`. `PAW_STATE=/tmp/desk-yantra-redact-rotated LITELLM_LOCAL_MODEL_COST_MAP=True .venv/bin/python -m pytest -q tests/test_security.py --tb=short`: **6 passed, 1 warning**. Full `PAW_STATE=/tmp/desk-yantra-redact-full LITELLM_LOCAL_MODEL_COST_MAP=True .venv/bin/python -m pytest -q --tb=short`: **55 passed, 3 warnings in 7.76s**.
+
+## Worker exit cleanup — 2026-11-20
+
+Contributor: **OpenAI Codex (GPT-6-sol)**. Worker supervision now waits for companion-confirmed tool cleanup before marking a read-only interrupted run failed. Unconfirmed cleanup goes to review, unused approvals are cancelled, and a late watcher does not stop an already completed run. `PAW_STATE=/tmp/desk-yantra-worker-cleanup LITELLM_LOCAL_MODEL_COST_MAP=True .venv/bin/python -m pytest -q tests/test_recovery.py --tb=short`: **8 passed** before the late-watcher test was added. Full `PAW_STATE=/tmp/desk-yantra-worker-full LITELLM_LOCAL_MODEL_COST_MAP=True .venv/bin/python -m pytest -q --tb=short`: **57 passed, 3 warnings in 7.70s**. This uses controlled exit/companion fixtures; an actual process crash and reboot remain unverified.

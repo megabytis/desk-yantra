@@ -67,7 +67,7 @@ def test_worker_supervision_marks_uncertain_actions_for_review(monkeypatch):
     class ExitedProcess:
         def wait(self):
             return 9
-    monkeypatch.setattr(server,'companion',lambda *args,**kwargs:{})
+    monkeypatch.setattr(server,'companion',lambda *args,**kwargs:{'stopped':True})
     for operation,expected in [('read','failed'),('shell','review')]:
         ident=str(uuid.uuid4())
         put('runs',{'id':ident,'status':'running'})
@@ -126,3 +126,35 @@ def test_restart_cancels_stale_approvals_before_safe_requeue(monkeypatch):
         assert get("approvals", ident + status)["status"] == "cancelled"
         with pytest.raises(ValueError, match="unconsumed approval"):
             claim_approval(ident + status, ident, action)
+
+
+def test_worker_exit_without_cleanup_confirmation_requires_review(monkeypatch):
+    from workbench.store import events
+
+    class ExitedProcess:
+        def wait(self):
+            return 9
+
+    ident = str(uuid.uuid4())
+    put("runs", {"id": ident, "status": "approval"})
+    put("approvals", {"id": ident, "run": ident, "status": "approved", "action": {"op": "write"}})
+    event(ident, "tool_call", {"op": "read", "path": "safe.txt"})
+    monkeypatch.setattr(server, "companion", lambda *args, **kwargs: {"stopped": False})
+    server.watch_worker(ident, ExitedProcess())
+    assert get("runs", ident)["status"] == "review"
+    assert get("approvals", ident)["status"] == "cancelled"
+    assert any(item["kind"] == "stop_incomplete" for item in events(ident))
+
+
+def test_late_worker_exit_does_not_stop_completed_run(monkeypatch):
+    class ExitedProcess:
+        def wait(self):
+            return 0
+
+    ident = str(uuid.uuid4())
+    put("runs", {"id": ident, "status": "completed"})
+    calls = []
+    monkeypatch.setattr(server, "companion", lambda *args, **kwargs: calls.append(args))
+    server.watch_worker(ident, ExitedProcess())
+    assert get("runs", ident)["status"] == "completed"
+    assert calls == []

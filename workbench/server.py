@@ -300,20 +300,31 @@ def start_worker(ident):
     threading.Thread(target=watch_worker,args=(ident,process),daemon=True).start()
 
 
-def watch_worker(ident,process):
-    returncode=process.wait()
-    history=events(ident)
-    uncertain=any(item['kind']=='action_started' and item['data'].get('op') not in ('read','list') for item in history)
-    status='review' if uncertain else 'failed'
-    changed=transition_run(ident,('queued','running','approval'),status)
+def watch_worker(ident, process):
+    returncode = process.wait()
+    if get("runs", ident).get("status") not in ("queued", "running", "approval"):
+        if WORKERS.get(ident) is process:
+            WORKERS.pop(ident, None)
+        return
+    history = events(ident)
+    uncertain = any(item["kind"] in ("action_started", "tool_call") and item["data"].get("op") not in ("read", "list") for item in history)
+    cleanup_confirmed = False
+    try:
+        cleanup_confirmed = companion("/stop/" + ident, {}, timeout=5).get("stopped") is True
+    except Exception:
+        pass
+    status = "review" if uncertain or not cleanup_confirmed else "failed"
+    changed = transition_run(ident, ("queued", "running", "approval"), status)
     if changed:
-        event(ident,'error',{'message':'Worker exited unexpectedly. No actions were replayed. Inspect actual results before starting replacement work.','exit_status':returncode,'review_required':uncertain})
-        try:
-            companion('/stop/'+ident,{},timeout=5)
-        except Exception:
-            event(ident,'stop_incomplete','The companion could not confirm tool cleanup; use the local stop control.')
+        for approval in all_objects("approvals"):
+            if approval.get("run") == ident and approval.get("status") in ("pending", "approved"):
+                approval["status"] = "cancelled"
+                put("approvals", approval)
+        if not cleanup_confirmed:
+            event(ident, "stop_incomplete", "The companion could not confirm tool cleanup; review required.")
+        event(ident, "error", {"message": "Worker exited unexpectedly. No actions were replayed. Inspect actual results before starting replacement work.", "exit_status": returncode, "review_required": status == "review"})
     if WORKERS.get(ident) is process:
-        WORKERS.pop(ident,None)
+        WORKERS.pop(ident, None)
 
 
 @app.post("/api/runs")
