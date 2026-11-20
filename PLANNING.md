@@ -188,4 +188,6 @@ Append entries in this format: `Date | Contributor and tool/model | Scope and fi
 
 | 2026-11-20 | OpenAI Codex (GPT-6-sol), under owner direction | Fixed token rotation across separate app/companion/worker processes: current token is read from shared private state for authentication and client requests, with atomic file replacement. Added independent subprocess regression. | Focused security suite 6 passed, 1 warning; full Python suite 55 passed, 3 warnings in 7.82s; four isolated browser fixtures passed in 1.1m. | Live service rotation/reconnect and key rotation still need validation. |
 
+| 2026-11-20 | OpenAI Codex (GPT-6-sol), under owner direction | Extended sensitive-value redaction to include the current shared token after rotation in long-lived processes; separate-process regression verifies new token is redacted. | Focused security suite 6 passed, 1 warning; full Python suite 55 passed, 3 warnings in 7.76s. | Binary content redaction and live rotation during active requests remain open. |
+
 **Rule for future agents:** The owner's objective stays production-grade completion even if a session ends. Implement a real, tested slice; update this file and `docs/ACCEPTANCE.md`; leave the next session a precise unfinished-task handoff. Do not call the product complete because a build or a scripted fixture passes.

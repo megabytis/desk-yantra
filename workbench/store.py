@@ -99,7 +99,7 @@ def transition_run(ident,expected,status,extra=None):
 
 
 def sensitive_values():
-    values = [TOKEN, ENCRYPTION_KEY]
+    values = [TOKEN, current_token(), ENCRYPTION_KEY]
     for provider in all_objects("providers"):
         if provider.get("secret"):
             secret = CIPHER.decrypt(provider["secret"].encode()).decode()

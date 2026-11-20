@@ -90,7 +90,7 @@ def test_token_rotation_reaches_separate_process():
     import sys
 
     child = subprocess.Popen(
-        [sys.executable, "-u", "-c", "from workbench import store; import sys; print(store.TOKEN, flush=True); sys.stdin.readline(); print(store.current_token(), flush=True)"],
+        [sys.executable, "-u", "-c", "from workbench import store; import sys; print(store.TOKEN, flush=True); sys.stdin.readline(); print(store.current_token(), flush=True); print(store.redact(store.current_token()), flush=True)"],
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, env=os.environ.copy(),
     )
     old = child.stdout.readline().strip()
@@ -100,6 +100,7 @@ def test_token_rotation_reaches_separate_process():
         child.stdin.write("continue\n")
         child.stdin.flush()
         assert child.stdout.readline().strip() == new
+        assert child.stdout.readline().strip() == "[REDACTED]"
         assert child.wait(timeout=5) == 0
     finally:
         if child.poll() is None:
