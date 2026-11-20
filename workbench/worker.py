@@ -17,7 +17,7 @@ from openhands.sdk.tool import Tool, ToolExecutor, register_tool
 from .providers import adapter
 from .client import companion
 from .runtime_context import allowed_operations, system_context
-from .store import STATE, TOKEN, all_objects, event, get, put, redact, consume_budget, transition_run
+from .store import STATE, TOKEN, all_objects, event, get, put, redact, consume_budget, transition_run, artifact_path
 
 
 class WorkAction(Action):
@@ -43,7 +43,7 @@ def tool_observation(run,result):
     if isinstance(result,dict) and result.get('artifact_id'):
         if run.get('vision_enabled'):
             artifact=get('artifacts',result['artifact_id'])
-            path=Path(artifact['path'])
+            path=artifact_path(artifact)
             if path.stat().st_size<=8_000_000:
                 data=base64.b64encode(path.read_bytes()).decode()
                 content.append(ImageContent(image_urls=['data:image/png;base64,'+data]))

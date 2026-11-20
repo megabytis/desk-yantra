@@ -19,7 +19,7 @@ from fastapi.staticfiles import StaticFiles
 from .providers import DEFAULTS, adapter, public
 from .client import companion
 from . import store
-from .store import STATE, CIPHER, all_objects, event, events, get, put, redact, transition_run, rotate_token
+from .store import STATE, CIPHER, all_objects, event, events, get, put, redact, transition_run, rotate_token, artifact_path
 
 WORKERS = {}
 MAX_REQUEST_BODY = 10 * 1024 * 1024
@@ -506,16 +506,24 @@ def approve(ident: str, body: dict):
 @app.get("/api/artifacts/{ident}")
 def artifact(ident: str):
     item = get("artifacts", ident)
-    return FileResponse(item["path"], filename=item["name"], media_type="application/octet-stream")
+    try:
+        path = artifact_path(item)
+    except ValueError as error:
+        raise HTTPException(404, str(error)) from error
+    return FileResponse(path, filename=item["name"], media_type="application/octet-stream")
 
 
 @app.get("/api/artifacts/{ident}/preview")
 def preview(ident: str):
     item = get("artifacts", ident)
-    with open(item["path"], "rb") as stream:
+    try:
+        path = artifact_path(item)
+    except ValueError as error:
+        raise HTTPException(404, str(error)) from error
+    with open(path, "rb") as stream:
         if stream.read(8) != b"\x89PNG\r\n\x1a\n":
             raise HTTPException(415, "Only PNG previews are supported")
-    return FileResponse(item["path"], media_type="image/png")
+    return FileResponse(path, media_type="image/png")
 
 
 if Path("dist").exists():

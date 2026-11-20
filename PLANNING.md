@@ -98,7 +98,7 @@ Each item should become an issue or change with a clear owner, code path, accept
 - [ ] Make delegation visible as task tree: ownership, authority, progress, child logs/artifacts, failure propagation, cancellation, handoff/retry policy. Test malicious or mismatched worker profiles cannot gain parent authority.
 - [ ] Improve agent planning/verification contract: distinguish requested goal, proposed action, actual observation, verified result and final claim. Add outcome checks for code repair, research citation and browser tasks. Do not trust model self-report alone.
 - [ ] Add tool capabilities only through gated adapters. Evaluate whether SDK browser tools cover needs before bringing in browser-use/browser-use. Support real file diffs for shell-driven edits, not only file-tool previews.
-- [ ] Backup/export/import of conversations, runs and artifacts with secret scrubbing and provenance; SQLite migrations, corruption handling and retention policy. Migration/restore tests on actual older state snapshots.
+- [ ] Artifact downloads and model image observations now require private regular files under STATE/artifacts; backup/export/import of conversations, runs and artifacts with secret scrubbing and provenance; SQLite migrations, corruption handling and retention policy. Migration/restore tests on actual older state snapshots.
 
 ### Phase 4 — isolated browser and host desktop (partly built)
 
@@ -191,5 +191,7 @@ Append entries in this format: `Date | Contributor and tool/model | Scope and fi
 | 2026-11-20 | OpenAI Codex (GPT-6-sol), under owner direction | Extended sensitive-value redaction to include the current shared token after rotation in long-lived processes; separate-process regression verifies new token is redacted. | Focused security suite 6 passed, 1 warning; full Python suite 55 passed, 3 warnings in 7.76s. | Binary content redaction and live rotation during active requests remain open. |
 
 | 2026-11-20 | OpenAI Codex (GPT-6-sol), under owner direction | Worker supervisor now requires companion-confirmed cleanup before classifying a read-only crash as failed, sends unconfirmed cleanup to review, cancels unused approvals, and ignores late exits of terminal runs. | Focused recovery suite 8 passed; full Python suite 57 passed, 3 warnings in 7.70s. Previous CI run 44711402607 completed successfully; 44711776727 was in progress when checked. | Actual kill/restart and reboot fault matrix remain. |
+
+| 2026-11-20 | OpenAI Codex (GPT-6-sol), under owner direction | Confined artifact downloads, PNG previews and model image observations to private regular files in STATE/artifacts; added missing/outside/symlink path regression. | Focused artifact/image tests 2 passed; full Python suite 58 passed, 3 warnings in 7.71s; four isolated browser fixtures passed in 1.1m, including real artifact download. | Backup/export/import, binary redaction and independent security review remain. |
 
 **Rule for future agents:** The owner's objective stays production-grade completion even if a session ends. Implement a real, tested slice; update this file and `docs/ACCEPTANCE.md`; leave the next session a precise unfinished-task handoff. Do not call the product complete because a build or a scripted fixture passes.

@@ -1,13 +1,14 @@
 import base64
 import uuid
 from openhands.sdk import ImageContent
-from workbench.store import put
+from workbench.store import STATE, put
 from workbench.worker import tool_observation
 
 
 def test_capture_is_forwarded_only_to_known_vision_models(tmp_path):
     ident=str(uuid.uuid4())
-    image=tmp_path/'fixture.png'
+    image=STATE/'artifacts'/ident
+    image.parent.mkdir(exist_ok=True)
     encoded='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jL1sAAAAASUVORK5CYII='
     image.write_bytes(base64.b64decode(encoded))
     put('artifacts',{'id':ident,'path':str(image),'name':'fixture.png','run':'image-fixture'})

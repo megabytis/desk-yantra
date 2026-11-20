@@ -98,6 +98,23 @@ def transition_run(ident,expected,status,extra=None):
             raise
 
 
+def artifact_path(item):
+    """Resolve a stored artifact only inside the private artifact directory."""
+    import stat
+
+    root = STATE / "artifacts"
+    path = Path(item["path"])
+    if root.is_symlink() or path.parent != root or path.is_symlink():
+        raise ValueError("Artifact path is outside private artifact storage")
+    try:
+        info = path.stat()
+    except FileNotFoundError as error:
+        raise ValueError("Artifact file is missing") from error
+    if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
+        raise ValueError("Artifact is not a private regular file")
+    return path
+
+
 def sensitive_values():
     values = [TOKEN, current_token(), ENCRYPTION_KEY]
     for provider in all_objects("providers"):
