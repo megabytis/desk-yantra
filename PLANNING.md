@@ -6,6 +6,8 @@
 
 **Attribution:** The implementation and verification documented through 2026-11-20 were performed by **OpenAI Codex (GPT-6 family)** in this workspace, working under the owner's direction. This file and its initial inventory were written by **OpenAI Codex (GPT-6-sol)**. These labels identify the assistant used in the session; they are not a claim that a human senior engineer independently reviewed the code. Future assistants must add dated entries with their own names and exact changes under [Contributor log](#contributor-log). Do not overwrite earlier attribution or claim to have run tests that someone else ran.
 
+The old working directory was retired to `/home/megabytis/Github/personal/personal-agent-workbench.migration-backup`. It is a private local migration backup, not the active project. The new runtime retains ignored state and a private pre-migration database backup.
+
 ## How to resume safely
 
 1. Read this file, `README.md`, `docs/ACCEPTANCE.md`, `docs/ARCHITECTURE.md`, and `docs/UPSTREAM-REVIEW.md`. Then inspect current source and Git status. Do not assume processes or `/tmp` files from an earlier session still exist.
@@ -60,7 +62,8 @@ Each item should become an issue or change with a clear owner, code path, accept
 - [x] Separate local repository; source, lockfiles, `.gitignore`, Arch README, fixture CI workflow, architecture decision record and upstream revision/license notes.
 - [ ] Inspect status and secret scan; remove any accidental personal data and test artifacts from tracked files. Add LICENSE, contribution guide, security policy, support matrix, code of conduct if public community project warrants it, and release/version policy.
 - [x] Owner created and cloned the official `megabytis/desk-yantra` GitHub repository; the `origin` remote is configured on `main`.
-- [ ] Push reviewed source to `main`, verify remote commit and CI. The repository was empty before this migration; the initial push has not yet been recorded as successful.
+- [x] Initial source pushed to `main`; remote verified at `7980f3b9e45fcc053a71ae03d0c809c7f611add0` on 2026-11-20.
+- [ ] Verify the GitHub Actions run completes successfully; initial run was in progress when publication was recorded: https://github.com/megabytis/desk-yantra/actions/runs/44705920066 .
 - [ ] Make clean install reproducible on a fresh Arch/Hyprland machine and in Linux CI. Test prerequisites: Python 3.13, uv, Node/npm, Docker, Playwright/Chromium, optional `grim`, `wtype`, `ydotool` daemon. Confirm supported CPU architectures and Docker UID mapping.
 - [ ] Define image tagging/pinning, supply-chain audit, dependency update cadence, SBOM/provenance and signed release approach. Test rollback to a previous release.
 

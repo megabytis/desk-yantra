@@ -21,7 +21,7 @@ This file is the continuation handoff. Fixture and live evidence must remain sep
 | Hyprland screen capture | PASS LIVE: companion HTTP 200, valid private PNG via `PYTHONPATH=. PAW_STATE=/tmp/paw-desktop-state .venv/bin/python tests/live_desktop.py`; image never displayed/uploaded |
 | Hyprland keyboard | PASS LIVE on 2026-11-20: authenticated companion + wtype typed an exact marker into a focus-checked disposable native Wayland Chromium window; revocation blocked a subsequent call. Fixture action driver, actual OS input. No desktop recording saved. |
 | Hyprland mouse | Adapter implemented, command construction fixture-tested; live verification blocked by missing ydotool/accessible ydotoold socket. Sandbox pointer control is independently live-verified. |
-| Public repository | Owner created `megabytis/desk-yantra` and cloned an empty `main`; initial migration/push verification is pending. Earlier blocker applied only to the old local checkout. |
+| Public repository | PASS: initial source commit `7980f3b9e45fcc053a71ae03d0c809c7f611add0` pushed to `megabytis/desk-yantra` main and verified via git ls-remote. Public GitHub Actions API returned the initial workflow in progress. CI completion remains pending. |
 
 ## Remaining implementation
 
