@@ -36,6 +36,12 @@ async def lifespan(app):
             except Exception:
                 pass
             kill_worker(run["id"])
+            # A recovered worker starts fresh; decisions from the interrupted
+            # worker must never authorize a later action on the same run ID.
+            for approval in all_objects("approvals"):
+                if approval.get("run") == run["id"] and approval.get("status") in ("pending", "approved"):
+                    approval["status"] = "cancelled"
+                    put("approvals", approval)
             history = events(run["id"])
             uncertain = any(item["kind"] in ("action_started", "tool_call") and item["data"].get("op") not in ("read","list") for item in history)
             try:

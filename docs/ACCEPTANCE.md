@@ -125,3 +125,7 @@ Contributor: **OpenAI Codex (GPT-6-sol)**. A real companion-approved shell comma
 ## Concurrent duplicate approval — 2026-11-20
 
 Contributor: **OpenAI Codex (GPT-6-sol)**. Two companion HTTP requests were synchronized immediately before claiming the same exact approval. Observed one HTTP 200, one HTTP 403, one file effect and one `action_started` event. `PAW_STATE=/tmp/desk-yantra-duplicate-full LITELLM_LOCAL_MODEL_COST_MAP=True .venv/bin/python -m pytest -q --tb=short`: **49 passed, 3 warnings in 7.10s**. This tests a controlled same-process contention; crash/restart and multi-process contention remain unverified. CI for prior commit 516c1bb completed successfully; 01fbd50 run was in progress when checked.
+
+## Stale approvals on restart — 2026-11-20
+
+Contributor: **OpenAI Codex (GPT-6-sol)**. Startup recovery now cancels pending and approved decisions from interrupted workers before safe requeue or review. A regression checks both statuses and confirms the old exact action cannot be claimed after safe requeue. `PAW_STATE=/tmp/desk-yantra-recovery-approvals LITELLM_LOCAL_MODEL_COST_MAP=True .venv/bin/python -m pytest -q tests/test_recovery.py --tb=short`: **7 passed**. Full `PAW_STATE=/tmp/desk-yantra-recovery-approvals-full LITELLM_LOCAL_MODEL_COST_MAP=True .venv/bin/python -m pytest -q --tb=short`: **50 passed, 3 warnings in 7.40s**. This is a simulated startup recovery, not an actual machine reboot. Local Goose session source was consulted for context; no source copied.

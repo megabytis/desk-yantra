@@ -100,3 +100,29 @@ def test_review_resolution_requires_cleanup_and_never_replays_actions(monkeypatc
     assert all(operation in ('kill','stop') for operation,_ in calls)
     with pytest.raises(ValueError,match='Only interrupted'):
         server.resolve_review(ident,{'note':'Do not resolve twice'})
+
+
+def test_restart_cancels_stale_approvals_before_safe_requeue(monkeypatch):
+    from workbench.store import claim_approval
+    started = []
+    ident = str(uuid.uuid4())
+    action = {"op": "write", "path": "stale.txt", "content": "do not replay"}
+    put("grants", {"id": ident, "revoked": False})
+    put("runs", {"id": ident, "status": "running", "grant": ident})
+    for status in ("pending", "approved"):
+        put("approvals", {"id": ident + status, "run": ident, "status": status, "action": action})
+    monkeypatch.setattr(server, "kill_worker", lambda run: None)
+    monkeypatch.setattr(server, "companion", lambda *args, **kwargs: {"stopped": True, "safe": True})
+    monkeypatch.setattr(server, "start_worker", started.append)
+
+    async def restart():
+        async with server.lifespan(server.app):
+            pass
+
+    asyncio.run(restart())
+    assert started == [ident]
+    assert get("runs", ident)["status"] == "queued"
+    for status in ("pending", "approved"):
+        assert get("approvals", ident + status)["status"] == "cancelled"
+        with pytest.raises(ValueError, match="unconsumed approval"):
+            claim_approval(ident + status, ident, action)
