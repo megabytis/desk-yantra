@@ -270,7 +270,13 @@ def grant(body: dict):
     shared = str(Path(body["shared"]).resolve()) if body.get("shared") else ""
     if shared and (not Path(shared).is_dir() or "," in shared):
         raise ValueError("Select an existing shared directory without commas in its path")
-    return put("grants", {"id": str(uuid.uuid4()), "mode": body["mode"], "root": str(root), "shared": shared, "capabilities": body["capabilities"], "revoked": False})
+    domains = [item.strip().lower().rstrip(".") for item in (body.get("allowed_domains") or "").split(",") if item.strip()]
+    if domains and body["mode"] != "sandbox":
+        raise ValueError("Browser domain restrictions require a sandbox workspace")
+    import re
+    if any(not re.fullmatch(r"(?:\*\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)*", item) for item in domains):
+        raise ValueError("Enter comma-separated domain names, optionally starting with *.")
+    return put("grants", {"id": str(uuid.uuid4()), "mode": body["mode"], "root": str(root), "shared": shared, "capabilities": body["capabilities"], "allowed_domains": domains, "revoked": False})
 
 
 @app.post("/api/grants/{ident}/revoke")

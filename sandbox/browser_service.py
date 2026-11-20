@@ -1,14 +1,55 @@
 import json
 import os
+import ipaddress
+from urllib.parse import urlsplit
 from pathlib import Path
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from playwright.sync_api import sync_playwright
+
+
+def allowed_request(url, domains):
+    """Apply the workspace's navigation rule to every browser network request."""
+    try:
+        parsed = urlsplit(url)
+        host = (parsed.hostname or "").lower().rstrip(".")
+        if parsed.scheme not in ("http", "https") or not host:
+            return False
+        if host in ("metadata.google.internal", "metadata.aws.internal", "fd00:ec2::254"):
+            return False
+        try:
+            if ipaddress.ip_address(host).is_link_local:
+                return False
+        except ValueError:
+            pass
+        if domains:
+            return any(
+                host == domain or host == "www." + domain or
+                (domain.startswith("*.") and (host == domain[2:] or host.endswith(domain[1:])))
+                for item in domains if (domain := str(item).strip().lower().rstrip("."))
+            )
+        return True
+    except ValueError:
+        return False
+
+
+policy = {"domains": [], "blocked": []}
+
+
+def guard_request(route):
+    url = route.request.url
+    if allowed_request(url, policy["domains"]):
+        route.continue_()
+    else:
+        policy["blocked"].append(url)
+        route.abort()
 
 
 class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         try:
             action = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+            policy["domains"] = action.get("allowed_domains") or []
+            policy["blocked"] = []
             if action.get("url"):
                 page.goto(action["url"], wait_until="domcontentloaded", timeout=30000)
             operation=action.get("browser_action","inspect")
@@ -23,6 +64,8 @@ class Handler(BaseHTTPRequestHandler):
                     page.locator(action["selector"]).fill(action["content"])
                 else:
                     page.locator(action["selector"]).click()
+            if policy["blocked"]:
+                raise ValueError("Browser request blocked by workspace network policy")
             page.screenshot(path=str(Path(os.environ.get("PAW_SANDBOX_ROOT", "/workspace")) / "browser.png"))
             result = {"url": page.url, "text": page.inner_text("body")[:100000], "screenshot": "browser.png"}
             self.send_response(200)
@@ -34,7 +77,10 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(json.dumps(result).encode())
 
 
-with sync_playwright() as playwright:
-    browser = playwright.chromium.launch(headless=True)
-    page = browser.new_page()
-    HTTPServer(("127.0.0.1", int(os.environ.get("PAW_BROWSER_PORT", "9111"))), Handler).serve_forever()
+if __name__ == "__main__":
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        context = browser.new_context(accept_downloads=False, service_workers="block")
+        context.route("**/*", guard_request)
+        page = context.new_page()
+        HTTPServer(("127.0.0.1", int(os.environ.get("PAW_BROWSER_PORT", "9111"))), Handler).serve_forever()

@@ -269,4 +269,16 @@ Contributor: **Antigravity (Gemini 3.8 Flash)**, under owner direction. Referenc
 | `git push origin main` | PASS: Commit `77b9f72` pushed to `origin/main`. |
 | GitHub Actions CI run `44733737558` | PASS: Workflow `fixture-tests` completed with conclusion `success`. |
 
+## Browser request policy and workspace domain controls — 2026-11-20
+
+Contributor: **OpenAI Codex (GPT-6)**, under owner direction. `sandbox/browser_service.py` now checks each Chromium HTTP request, including redirects and page resources, against the workspace domain rule; it blocks unsafe schemes and known cloud metadata addresses. `workbench/server.py`, `workbench/companion.py`, and `web/Management.tsx` allow a sandbox workspace to set an optional domain list and transmit it to the browser. `tests/test_browser_network.py` covers request routing, metadata denial, domain input validation and companion transport. The image was rebuilt, but an end-to-end malicious redirect inside a running container was not exercised. This does not restrict arbitrary container shell networking, DNS rebinding, or WebSocket traffic.
+
+| Command / check | Actual result this session |
+| --- | --- |
+| `.venv/bin/python scripts/check_python.py tests/test_browser_network.py tests/test_browser_policy.py -q` | PASS: 8 passed in 0.28s. |
+| `.venv/bin/python scripts/check_python.py` | PASS: 102 passed, 3 warnings in 5.40s. |
+| `npm run build` | PASS: TypeScript and Vite production bundle. |
+| `.venv/bin/python scripts/check_ui.py` | PASS: 5 passed in 50.9s. |
+| `docker build -t paw-sandbox:local sandbox` | PASS: image built from the updated browser service. |
+
 

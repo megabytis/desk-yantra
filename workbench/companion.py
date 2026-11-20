@@ -464,6 +464,9 @@ def execute(run_id: str, action: dict):
 
 
 def sandbox(run, action):
+    if action["op"] == "browser":
+        grant = get("grants", run["grant"])
+        action = {**action, "allowed_domains": grant.get("allowed_domains") or []}
     container = "paw-" + run.get("workspace_id",run["id"])
     inspected = subprocess.run(["docker", "inspect", container], capture_output=True)
     if inspected.returncode:
