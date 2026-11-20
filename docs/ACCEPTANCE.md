@@ -109,3 +109,7 @@ Final completed runner verification: `.venv/bin/python scripts/check_ui.py` exit
 ## Phase 1 threat model — 2026-11-20
 
 Contributor: **OpenAI Codex (GPT-6-sol)**. GitHub Actions run [44708120050](https://github.com/megabytis/desk-yantra/actions/runs/44708120050) for commit `b01b9b5` was checked via the public Actions API and reported `completed` / `success`. Added `docs/THREAT-MODEL.md` with the trusted single-user target, eight execution/data boundaries, existing controls, residual risks and concrete next tests. This documentation change has no new runtime security claim; independent review remains open. `git diff --check` passed.
+
+## Revocation race regression — 2026-11-20
+
+Contributor: **OpenAI Codex (GPT-6-sol)**. A write paused immediately after one-use approval consumption was revoked before file admission. The request returned 403 and created no file. Initial focused test: 10 passed. The first full run exposed a revoke 500 caused by a historical run record missing `grant`; companion now skips records without a matching grant. Final `PAW_STATE=/tmp/desk-yantra-race-fixed LITELLM_LOCAL_MODEL_COST_MAP=True .venv/bin/python -m pytest -q --tb=short`: **46 passed, 3 warnings in 7.05s**. This verifies the controlled admission race, not all revocation timings or a live hostile workload.

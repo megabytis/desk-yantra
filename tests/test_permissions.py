@@ -136,3 +136,33 @@ def test_noisy_command_has_bounded_observation_and_event_history(tmp_path):
     assert len(result['output'])==200_000
     assert len(terminal)<201_000
     assert terminal.endswith('[Output truncated after 200000 characters; command continued to completion.]\n')
+
+
+def test_revoke_waiting_on_file_admission_blocks_write(tmp_path, monkeypatch):
+    """Revocation wins while a write waits for the companion admission lock."""
+    grant, run = setup_run(tmp_path)
+    client = TestClient(companion.app, headers={"Authorization": "Bearer " + TOKEN})
+    action = authorize(run, {"op": "write", "path": "race.txt", "content": "forbidden"})
+    entered = threading.Event()
+    release = threading.Event()
+    original = companion.claim_approval
+
+    def wait_after_claim(*args):
+        result = original(*args)
+        entered.set()
+        assert release.wait(5)
+        return result
+
+    monkeypatch.setattr(companion, "claim_approval", wait_after_claim)
+    result = []
+    worker = threading.Thread(target=lambda: result.append(client.post("/execute/" + run["id"], json=action)))
+    worker.start()
+    assert entered.wait(5)
+    try:
+        assert client.post("/revoke/" + grant["id"]).status_code == 200
+    finally:
+        release.set()
+        worker.join(5)
+    assert not worker.is_alive()
+    assert result[0].status_code == 403
+    assert not (tmp_path / "race.txt").exists()

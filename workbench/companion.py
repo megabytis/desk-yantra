@@ -333,7 +333,7 @@ def revoke(grant_id: str):
         grant["revoked"] = True
         put("grants", grant)
         for run in all_objects("runs"):
-            if run["grant"] == grant_id:
+            if run.get("grant") == grant_id:
                 terminate(run["id"])
     return {"revoked": True}
 
