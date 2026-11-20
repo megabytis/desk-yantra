@@ -54,6 +54,14 @@ SCHEMA_VERSION = 1
 DB = sqlite3.connect(STATE / "workbench.db", check_same_thread=False)
 
 
+def validate_schema(database):
+    expected = {"objects": ("kind", "id", "body"), "events": ("seq", "run", "time", "kind", "body")}
+    for table, columns in expected.items():
+        actual = tuple(row[1] for row in database.execute(f"PRAGMA table_info({table})"))
+        if actual != columns:
+            raise RuntimeError(f"State table {table} has an incompatible layout")
+
+
 def initialize_schema(database):
     version = database.execute("PRAGMA user_version").fetchone()[0]
     if version > SCHEMA_VERSION:
@@ -63,12 +71,14 @@ def initialize_schema(database):
         try:
             database.execute("CREATE TABLE IF NOT EXISTS objects (kind TEXT, id TEXT, body TEXT, PRIMARY KEY(kind,id))")
             database.execute("CREATE TABLE IF NOT EXISTS events (seq INTEGER PRIMARY KEY AUTOINCREMENT, run TEXT, time REAL, kind TEXT, body TEXT)")
+            validate_schema(database)
             database.execute("CREATE INDEX IF NOT EXISTS events_run_sequence ON events(run,seq)")
             database.execute("PRAGMA user_version=1")
             database.commit()
         except Exception:
             database.rollback()
             raise
+    validate_schema(database)
     database.execute("PRAGMA journal_mode=WAL")
 
 

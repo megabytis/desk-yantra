@@ -39,3 +39,17 @@ def test_future_schema_is_rejected_without_downgrade(tmp_path):
     assert db.execute("PRAGMA user_version").fetchone()[0] == 2
     assert db.execute("SELECT count(*) FROM sqlite_master WHERE type='table'").fetchone()[0] == 0
     db.close()
+
+
+def test_malformed_legacy_schema_is_not_stamped_current(tmp_path):
+    db = sqlite3.connect(tmp_path / "workbench.db")
+    db.execute("CREATE TABLE objects (kind TEXT, id TEXT)")
+    db.commit()
+    db.close()
+    result = run_import(tmp_path)
+    assert result.returncode != 0
+    assert "incompatible layout" in result.stderr
+    db = sqlite3.connect(tmp_path / "workbench.db")
+    assert db.execute("PRAGMA user_version").fetchone()[0] == 0
+    assert db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='events'").fetchone() is None
+    db.close()

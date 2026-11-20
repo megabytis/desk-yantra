@@ -73,14 +73,14 @@ The backup contains the pairing token, encryption key, SQLite snapshot, events a
 ## Development and tests
 
 ```sh
-PAW_STATE=/tmp/paw-tests LITELLM_LOCAL_MODEL_COST_MAP=True uv run pytest -q
+uv run python scripts/check_python.py
 npm run build
 npx playwright install chromium
 uv run python tests/browser_probe.py
 uv run python scripts/check_ui.py
 ```
 
-The fixture server on 18767 is scripted, not an actual model. Browser tests create disposable Git repositories under `/tmp` and exercise the real SDK/companion execution path. Unit tests must use a separate `PAW_STATE`. The isolated UI runner uses a temporary `PAW_STATE` and requires free ports 8765, 8766 and 18767. For manual tests against a running disposable app, pass that app's `PAW_STATE` to Playwright so it reads the matching token. See [contribution instructions](CONTRIBUTING.md), [security policy](SECURITY.md) and [support and release policy](docs/RELEASE.md).
+The fixture server on 18767 is scripted, not an actual model. Browser tests create disposable Git repositories under `/tmp` and exercise the real SDK/companion execution path. The Python and UI runners each create private temporary `PAW_STATE` directories and remove them when finished. The UI runner requires free ports 8765, 8766 and 18767. For manual tests against a running disposable app, pass that app's `PAW_STATE` to Playwright so it reads the matching token. See [contribution instructions](CONTRIBUTING.md), [security policy](SECURITY.md) and [support and release policy](docs/RELEASE.md).
 
 The build's known scripted fixtures and live verification connections and their agents/runs are hidden from normal UI views. Use **Show test data** to inspect them. This changes visibility only and does not delete history. Personal connections you create remain visible. Connection and agent profiles can be edited from their management cards. The guided setup links model connection, workspace authorization and agent setup. Responses render Markdown, tables and code; approvals show the actual file diff or command and working directory.
 
