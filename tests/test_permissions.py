@@ -251,3 +251,40 @@ def test_concurrent_duplicate_approval_executes_once(tmp_path, monkeypatch):
     assert sorted(responses) == [200, 403]
     assert (tmp_path / "once.txt").read_text() == "one execution"
     assert len([item for item in events(run["id"]) if item["kind"] == "action_started"]) == 1
+
+
+def test_revoke_waiting_on_read_admission_blocks_read(tmp_path, monkeypatch):
+    """A read operation paused before admission is blocked if the grant is revoked, leaking no data."""
+    secret_file = tmp_path / "secret.txt"
+    secret_file.write_text("classified data")
+    grant, run = setup_run(tmp_path)
+    entered = threading.Event()
+    release = threading.Event()
+    original_event = companion.event
+
+    def wait_on_start(run_id, kind, value):
+        result = original_event(run_id, kind, value)
+        if kind == "action_started" and value.get("op") == "read":
+            entered.set()
+            assert release.wait(10)
+        return result
+
+    monkeypatch.setattr(companion, "event", wait_on_start)
+    client = TestClient(companion.app, headers={"Authorization": "Bearer " + TOKEN})
+    response_holder = []
+
+    def attempt():
+        res = client.post("/execute/" + run["id"], json={"op": "read", "path": "secret.txt"})
+        response_holder.append(res)
+
+    worker = threading.Thread(target=attempt)
+    worker.start()
+    assert entered.wait(10)
+    try:
+        assert client.post("/revoke/" + grant["id"]).status_code == 200
+    finally:
+        release.set()
+        worker.join(10)
+    assert not worker.is_alive()
+    assert response_holder[0].status_code == 403
+    assert "classified data" not in response_holder[0].text

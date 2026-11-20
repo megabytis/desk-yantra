@@ -171,3 +171,46 @@ Contributor: **OpenAI Codex (GPT-6-sol)**. Added `scripts/check_python.py`, whic
 ## Backup verification — 2026-11-20
 
 Contributor: **OpenAI Codex (GPT-6-sol)**. Added `python -m workbench verify-backup PATH`, a read-only check for listed files, SHA-256 hashes, SQLite integrity/schema and artifact record consistency. Backup creation verifies before publication; restore verifies before copying. Focused `.venv/bin/python scripts/check_python.py tests/test_backup.py -q`: **6 passed**, including unlisted/missing artifacts and a corrupt SQLite file with a matching rewritten manifest hash. Full `.venv/bin/python scripts/check_python.py`: **67 passed, 3 warnings in 8.38s**. A temporary create/verify/restore of existing private state returned **54 / 54 / 54 artifacts**; the copy was removed on exit. The manifest is not a signature and cannot authenticate against a malicious editor. Browser tests were not rerun because this command does not change the app or browser path.
+
+## Provider health tracking, CSS design tokens, and a11y foundations — 2026-11-20
+
+Contributor: **Antigravity (Claude Opus 4.6 & Gemini 3.8 Flash)**, under owner direction.
+- Provider health tracking: `workbench/server.py` records `last_discovery` and `last_test` with execution latency, timestamp, result count or redacted error details; retains previous discovered/manual models when discovery encounters an error; invalidates stale health info upon provider endpoint/key edits.
+- UI enhancements: `web/Management.tsx` displays pass/fail status, timestamp, discovery count, latency and detailed messages for model discovery and inference checks; adds failed discovery error display.
+- Design tokens & a11y: `web/style.css` introduces a unified `:root` token system (colors, spacing, typography, transitions, shadows, focus rings), reduced-motion media query, and clean `.skip-link` and `.sr-only` accessibility classes. `web/main.tsx` and `web/BrowserPanel.tsx` add keyboard skip link, polite `aria-live` status regions, and screen-reader announcements.
+- Test coverage: `tests/test_provider_health.py` adds 3 tests covering discovery health/model retention, credential edits, and inference latency/redaction. `tests/ui/settings.spec.ts` adds a UI test verifying failed discovery error feedback. `tests/ui/journey.spec.ts` asserts discovery and inference check indicators.
+
+| Command / check | Actual result this session |
+| --- | --- |
+| `npm run build` | PASS: TypeScript (`tsc --noEmit`) and Vite production bundle passed in 1.88s (0 errors). |
+| `.venv/bin/python scripts/check_python.py` | PASS: 70 passed, 3 warnings in 8.26s. |
+| `.venv/bin/python tests/browser_probe.py` | PASS: local Chromium navigation, fill/click, keyboard takeover, screenshot, file creation. |
+| `.venv/bin/python scripts/check_ui.py` | PASS: 5 passed in 1.2m across `control.spec.ts`, `journey.spec.ts`, and `settings.spec.ts`. |
+
+## Concurrency races, lifecycle hierarchies, and surviving command termination — 2026-11-20
+
+Contributor: **Antigravity (Gemini 3.8 Flash)**, under owner direction.
+- Atomic browser takeover: `workbench/server.py` uses `transition_run(ident, ("completed",), "paused")` on begin and `transition_run(ident, ("paused",), "completed")` on end. Stops resurrection of stopped runs back to completed and rejects actions when run was stopped during browser control.
+- Read admission race: `tests/test_permissions.py` adds `test_revoke_waiting_on_read_admission_blocks_read`, verifying that revoking a grant while a read is pending admission immediately terminates with HTTP 403 and returns zero file bytes.
+- Deep descendant tree cancellation: `tests/test_stop_api.py` adds `test_stop_deep_descendants_across_hierarchy`, proving root stop recurses down three levels (parent -> child -> grandchild), transitions all runs to `"stopped"`, cancels all approvals, and invokes companion cleanup and worker termination for every level.
+- Surviving command recovery: `tests/test_recovery.py` adds `test_companion_restart_kills_surviving_command_and_marks_review`, verifying that companion startup kills surviving process groups matching their recorded Linux start time, marks the run for review, and records an audit event.
+
+| Command / check | Actual result this session |
+| --- | --- |
+| `npm run build` | PASS: Vite production build passed (0 errors). |
+| `.venv/bin/python scripts/check_python.py` | PASS: 74 passed, 3 warnings in 8.45s. |
+| `.venv/bin/python scripts/check_ui.py` | PASS: 5 passed in 1.3m across all UI suites. |
+
+## Delegation security, failure propagation, and task tree navigation — 2026-11-20
+
+Contributor: **Antigravity (Gemini 3.8 Flash)**, under owner direction.
+- Delegation authority enforcement: `workbench/server.py` checks that parent has `"delegate"` in its allowed tools before allowing child creation, strictly intersects child tools with parent tools, prevents grant escalation/crossover, enforces max delegation depth (2), and rejects delegation to archived agents.
+- Failure propagation: `workbench/worker.py` detects when a delegated child terminates with a non-completed status (`failed`, `stopped`, `review`), emits a `tool_error` event on the parent run, and returns `WorkResult(..., is_error=True)` so the agent loop registers child failure instead of falsely treating it as successful.
+- Task tree visibility & navigation: `web/Workspace.tsx` and `web/workspace.css` add upward parent task navigation (`↰ Parent task: [Name] · [Task preview]`), display child depth levels and status pills, and style delegated task items.
+- Test coverage: `tests/test_delegation.py` adds 6 tests covering tool intersection, delegation tool authority check, workspace grant crossover rejection, depth limit enforcement, archived worker rejection, and failure propagation observation.
+
+| Command / check | Actual result this session |
+| --- | --- |
+| `npm run build` | PASS: TypeScript (`tsc --noEmit`) and Vite bundle passed with 0 errors. |
+| `.venv/bin/python scripts/check_python.py` | PASS: 80 passed, 3 warnings in 8.18s. |
+| `.venv/bin/python scripts/check_ui.py` | PASS: 5 passed in 1.2m across `control.spec.ts`, `journey.spec.ts`, and `settings.spec.ts`. |

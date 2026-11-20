@@ -20,9 +20,11 @@ test('fixture: UI connection, model discovery, real host edit and artifact', asy
   await page.getByLabel('Base URL').fill('http://127.0.0.1:18767');
   await page.getByRole('button',{name:'Save connection'}).click();
   await page.getByRole('button',{name:'Refresh models'}).click();
+  await expect(page.getByText('Last model refresh passed')).toBeVisible();
   await page.getByRole('combobox',{name:'Model',exact:true}).selectOption('fixture-tool-model');
   await page.getByRole('button',{name:'Test inference'}).click();
   await expect(page.getByRole('status')).toContainText('Inference succeeded',{timeout:45000});
+  await expect(page.getByText('Last inference check passed')).toBeVisible();
   await page.getByRole('button',{name:'Use as default'}).click();
   await page.getByRole('button',{name:'Computer access',exact:true}).click();
   await page.getByRole('button',{name:/Add workspace/}).click();

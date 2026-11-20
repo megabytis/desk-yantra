@@ -38,3 +38,26 @@ def test_revoke_stops_approval_wait_and_ignores_legacy_runs(monkeypatch):
     assert server.revoke(ident)["revoked"] is True
     assert get("runs", ident)["status"] == "stopped"
     assert get("approvals", ident)["status"] == "cancelled"
+
+
+def test_stop_deep_descendants_across_hierarchy(monkeypatch):
+    root, child, grandchild = str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
+    put("runs", {"id": root, "status": "running", "parent": None})
+    put("runs", {"id": child, "status": "approval", "parent": root})
+    put("runs", {"id": grandchild, "status": "queued", "parent": child})
+    for ident in (root, child, grandchild):
+        put("approvals", {"id": ident, "run": ident, "status": "approved", "action": {"op": "write"}})
+    stopped_calls = []
+    killed = []
+    monkeypatch.setattr(server, "companion", lambda path, body: stopped_calls.append(path) or {"stopped": True})
+    monkeypatch.setattr(server, "kill_worker", lambda ident: killed.append(ident))
+
+    result = server.stop(root)
+    assert result["status"] == "stopped"
+    assert get("runs", root)["status"] == "stopped"
+    assert get("runs", child)["status"] == "stopped"
+    assert get("runs", grandchild)["status"] == "stopped"
+    for ident in (root, child, grandchild):
+        assert get("approvals", ident)["status"] == "cancelled"
+    assert set(stopped_calls) == {"/stop/" + root, "/stop/" + child, "/stop/" + grandchild}
+    assert set(killed) == {root, child, grandchild}

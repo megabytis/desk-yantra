@@ -2,7 +2,7 @@ import asyncio
 import uuid
 import pytest
 from workbench import server, worker
-from workbench.store import put, get, event, consume_budget
+from workbench.store import put, get, event, events, consume_budget
 
 
 def test_restart_recovers_only_safe_work(monkeypatch):
@@ -158,3 +158,34 @@ def test_late_worker_exit_does_not_stop_completed_run(monkeypatch):
     server.watch_worker(ident, ExitedProcess())
     assert get("runs", ident)["status"] == "completed"
     assert calls == []
+
+
+def test_companion_restart_kills_surviving_command_and_marks_review():
+    import subprocess
+    import sys
+    from workbench import companion
+    from workbench.companion import process_identity, recover_commands
+
+    ident = str(uuid.uuid4())
+    put("runs", {"id": ident, "status": "running"})
+    # Start a real background process group that sleeps
+    proc = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"], start_new_session=True)
+    try:
+        started = process_identity(proc.pid)
+        put("processes", {"id": ident, "pid": proc.pid, "started": started, "active": True})
+        # Simulate companion restart recovering commands
+        recover_commands()
+        # Verify the process group was killed
+        proc.wait(timeout=5)
+        assert proc.poll() is not None
+        assert get("processes", ident)["active"] is False
+        assert get("runs", ident)["status"] == "review"
+        rec_events = [item for item in events(ident) if item["kind"] == "recovery"]
+        assert len(rec_events) > 0
+        assert "prior command terminated" in rec_events[-1]["data"]
+    finally:
+        try:
+            import os, signal
+            os.killpg(proc.pid, signal.SIGKILL)
+        except (ProcessLookupError, FileNotFoundError):
+            pass

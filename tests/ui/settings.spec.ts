@@ -65,3 +65,23 @@ test('settings: edit connections without returning keys and edit agent instructi
   expect(restored.providers.find((item:any)=>item.id===provider.id).has_key).toBe(true);
   expect(restored.runs).toEqual(state.runs);
 });
+
+test('settings: failed model refresh keeps existing models and explains the failure',async({page})=>{
+  await page.addInitScript(()=>localStorage.setItem('paw.showTestData','true'));
+  await page.goto('/');
+  await page.getByLabel('Launch token').fill(readFileSync(join(process.env.PAW_STATE || '.state','token'),'utf8').trim());
+  await page.getByRole('button',{name:'Connect to workbench'}).click();
+  await page.getByRole('button',{name:/Settings & providers/}).click();
+  await page.getByRole('button',{name:/Add connection/}).click();
+  const name='Fixture failing refresh '+Date.now();
+  await page.getByLabel('Name',{exact:true}).fill(name);
+  await page.getByRole('combobox',{name:'Provider',exact:true}).selectOption('compatible');
+  await page.getByLabel('Base URL').fill('http://127.0.0.1:1/v1');
+  await page.getByRole('button',{name:'Save connection',exact:true}).click();
+  await page.getByRole('button',{name:'Refresh models'}).click();
+  await expect(page.getByText('Last model refresh failed')).toBeVisible();
+  await expect(page.locator('.connection-check.check-failed')).toContainText('Server unreachable');
+  await page.reload();
+  await page.locator('.connection-card').filter({hasText:name}).click();
+  await expect(page.getByText('Last model refresh failed')).toBeVisible();
+});

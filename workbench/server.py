@@ -157,19 +157,32 @@ def save_provider(body: dict):
         raise ValueError("Use an HTTP endpoint without embedded credentials or query parameters")
     previous = get("providers", body["id"]) if body.get("id") else {}
     unchanged=previous.get('type')==kind and previous.get('url')==url and not body.get('key')
-    provider = {"id": previous.get("id", str(uuid.uuid4())), "name": body["name"], "type": kind, "url": url, "secret": CIPHER.encrypt(body["key"].encode()).decode() if body.get("key") else previous.get("secret", ""), "models": previous.get("models", []) if unchanged else [],"last_test":previous.get('last_test') if unchanged else None,"archived":previous.get('archived',False)}
+    provider = {"id": previous.get("id", str(uuid.uuid4())), "name": body["name"], "type": kind, "url": url, "secret": CIPHER.encrypt(body["key"].encode()).decode() if body.get("key") else previous.get("secret", ""), "models": previous.get("models", []) if unchanged else [],"last_test":previous.get('last_test') if unchanged else None,"last_discovery":previous.get('last_discovery') if unchanged else None,"archived":previous.get('archived',False)}
     return public(put("providers", provider))
+
+
+def record_provider_check(original, field, result, models=None):
+    with store.LOCK:
+        current = get("providers", original["id"])
+        if any(current.get(key) != original.get(key) for key in ("type", "url", "secret")):
+            raise ValueError("Connection changed during the check; run it again")
+        current[field] = result
+        if models is not None:
+            current["models"] = models + [item for item in current["models"] if item["source"] == "manual" and item["id"] not in {model["id"] for model in models}]
+        put("providers", current)
 
 
 @app.post("/api/providers/{ident}/discover")
 def discover(ident: str):
     provider = get("providers", ident)
+    started = time.perf_counter()
     try:
         models = adapter(provider).discover()
-    except httpx.RequestError as error:
-        raise ValueError("Server unreachable; check URL, listening address and network") from error
-    provider["models"] = models + [item for item in provider["models"] if item["source"] == "manual" and item["id"] not in {model["id"] for model in models}]
-    put("providers", provider)
+    except Exception as error:
+        detail = "Server unreachable; check URL, listening address and network" if isinstance(error, httpx.RequestError) else str(redact(str(error)))[:500] if isinstance(error, ValueError) else "Server returned an invalid model list"
+        record_provider_check(provider, "last_discovery", {"ok": False, "time": time.time(), "latency_ms": round((time.perf_counter() - started) * 1000), "message": detail})
+        raise ValueError(detail) from error
+    record_provider_check(provider, "last_discovery", {"ok": True, "time": time.time(), "latency_ms": round((time.perf_counter() - started) * 1000), "count": len(models)}, models)
     return {"models": models, "message": "Models refreshed" if models else "Server returned an empty model list; install a model or enter an ID manually"}
 
 
@@ -185,17 +198,16 @@ def test_provider(ident: str, body: dict):
     from openhands.sdk import LLM
     from openhands.sdk.llm import Message, TextContent
     provider=get('providers',ident)
+    started=time.perf_counter()
     try:
         llm = LLM(**adapter(provider).llm_config(body["model"]), usage_id="connection-test", timeout=30, num_retries=0)
         llm.completion(messages=[Message(role="user", content=[TextContent(text="Reply OK")])])
-        provider['last_test']={'ok':True,'model':body['model'],'time':time.time()}
-        put('providers',provider)
-        return {"message": "Inference succeeded with this connection and model"}
     except Exception as error:
         detail="Inference failed: " + str(redact(str(error)))[:500]
-        provider['last_test']={'ok':False,'model':body['model'],'time':time.time(),'message':detail}
-        put('providers',provider)
+        record_provider_check(provider,'last_test',{'ok':False,'model':body['model'],'time':time.time(),'latency_ms':round((time.perf_counter()-started)*1000),'message':detail})
         raise ValueError(detail) from error
+    record_provider_check(provider,'last_test',{'ok':True,'model':body['model'],'time':time.time(),'latency_ms':round((time.perf_counter()-started)*1000)})
+    return {"message": "Inference succeeded with this connection and model"}
 
 
 @app.post("/api/default")
@@ -279,6 +291,8 @@ def new_run(body, parent=None):
         parent = get("runs", parent["id"])
         if parent["status"] != "running":
             raise ValueError("Parent is no longer running")
+        if "delegate" not in parent.get("tools", []):
+            raise ValueError("Parent lacks delegation authority")
         tools &= set(parent["tools"])
         if body["grant"] != parent["grant"] or parent["depth"] >= 2:
             raise ValueError("Delegation exceeds parent authority")
@@ -425,16 +439,15 @@ def browser_control(ident:str,body:dict):
         raise ValueError("This run does not have sandbox browser authority")
     operation=body.get("operation")
     if operation=="begin":
-        if run["status"]!="completed":
+        updated = transition_run(ident, ("completed",), "paused")
+        if updated is None:
             raise ValueError("Browser control is available after the agent finishes, so user and agent actions cannot overlap")
-        run["status"]="paused"
-        put("runs",run)
         event(ident,"browser_control","User took control of the sandbox browser")
+        return {"status": "paused"}
     elif operation=="end":
-        if run["status"]!="paused":
+        updated = transition_run(ident, ("paused",), "completed")
+        if updated is None:
             raise ValueError("Browser control is not active")
-        run["status"]="completed"
-        put("runs",run)
         event(ident,"browser_control","User returned browser control; inspect the current page before new work")
         return {"status":"completed"}
     if get("runs",ident)["status"]!="paused":

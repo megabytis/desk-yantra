@@ -40,3 +40,26 @@ def test_browser_control_rechecks_revoked_grant(monkeypatch):
     put('grants',grant)
     with pytest.raises(ValueError):
         server.browser_control(run['id'],{'operation':'click','x':10,'y':20})
+
+
+def test_browser_control_stopped_run_rejection(monkeypatch):
+    run = fixture_run()
+    monkeypatch.setattr(server, 'companion', lambda *args, **kwargs: {'stopped': True})
+    monkeypatch.setattr(server, 'kill_worker', lambda ident: None)
+
+    # Begin control: completed -> paused
+    server.browser_control(run['id'], {'operation': 'begin'})
+    assert get('runs', run['id'])['status'] == 'paused'
+
+    # Stop the run while in browser control
+    server.stop(run['id'])
+    assert get('runs', run['id'])['status'] == 'stopped'
+
+    # Cannot return control to resurrect a stopped run to completed
+    with pytest.raises(ValueError, match='not active'):
+        server.browser_control(run['id'], {'operation': 'end'})
+    assert get('runs', run['id'])['status'] == 'stopped'
+
+    # Action submission on stopped run fails
+    with pytest.raises(ValueError, match='Take browser control before sending actions'):
+        server.browser_control(run['id'], {'operation': 'navigate', 'url': 'https://example.com'})

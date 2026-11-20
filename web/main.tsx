@@ -1,4 +1,4 @@
-import {FormEvent,useEffect,useState} from 'react';
+import {FormEvent,useEffect,useRef,useState} from 'react';
 import {createRoot} from 'react-dom/client';
 import {Workspace} from './Workspace';
 import {Management} from './Management';
@@ -25,6 +25,8 @@ function App(){
   const [pairing,setPairing]=useState(false);
   const [online,setOnline]=useState(true);
   const [showTestData,setShowTestData]=useState(()=>localStorage.getItem('paw.showTestData')==='true');
+  const [connectionStatus,setConnectionStatus]=useState('');
+  const prevOnlineRef=useRef(true);
   async function refresh(){
     try{const result=await api('state');setState(result);setAuth(false);setError('');setOnline(true);}
     catch(failure){setOnline(false);if(failure instanceof ApiError&&failure.status===401){setAuth(true);setState(null);}else if(!state)setError('The local service is unavailable. Start the workbench, then retry.');}
@@ -38,6 +40,11 @@ function App(){
     source.onmessage=message=>{const item=JSON.parse(message.data);setHistory(previous=>previous.some(old=>old.seq===item.seq)?previous:[...previous,item]);};
     return()=>source.close();
   },[current.id,!!state]);
+  useEffect(()=>{
+    if(prevOnlineRef.current && !online) setConnectionStatus('Connection lost. Reconnecting to your workbench…');
+    else if(!prevOnlineRef.current && online) setConnectionStatus('Connection restored.');
+    prevOnlineRef.current=online;
+  },[online]);
   function navigate(page:string){const id=route().id;window.location.hash=page+(id?'/'+id:'');}
   function select(id:string){window.location.hash='Chat'+(id?'/'+id:'');}
   async function pair(event:FormEvent<HTMLFormElement>){
@@ -46,9 +53,9 @@ function App(){
     catch(failure){setError(failure instanceof Error?failure.message:String(failure));}
     finally{setPairing(false);}
   }
-  if(!state)return <div className="pairing-screen"><div className="pairing-story"><div className="pairing-logo">◈ Desk Yantra</div><div><small>YOUR PERSONAL AGENT ENVIRONMENT</small><h1>A place to think.<br/>A machine to act.</h1><p>Connect your models. Give your agents a workspace.<br/>Follow the work, and keep the final say.</p></div><span>Self-hosted · Local control · Your providers</span></div><main className="pairing-form"><span className="eyebrow">DESK YANTRA</span><h2>{loading?'Connecting to your workbench…':auth?'Connect this browser':'Desk Yantra is offline'}</h2>{auth?<><p>Use the pairing token from your local launcher. This gives your browser access to this workbench.</p><form onSubmit={event=>void pair(event)}><label>Launch token<input name="token" type="password" required autoComplete="off" placeholder="Paste your local pairing token" autoFocus/></label>{error&&<p className="pairing-error" role="alert">{error}</p>}<button disabled={pairing}>{pairing?'Connecting…':'Connect to workbench →'}</button></form><small>Provider credentials are entered separately in Settings.</small></>:<><p>{error||'Looking for the local service…'}</p>{!loading&&<button onClick={()=>void refresh()}>Retry connection</button>}</>}</main></div>;
+  if(!state)return <div className="pairing-screen"><a href="#main-content" className="skip-link">Skip to main content</a><div className="pairing-story"><div className="pairing-logo">◈ Desk Yantra</div><div><small>YOUR PERSONAL AGENT ENVIRONMENT</small><h1>A place to think.<br/>A machine to act.</h1><p>Connect your models. Give your agents a workspace.<br/>Follow the work, and keep the final say.</p></div><span>Self-hosted · Local control · Your providers</span></div><main id="main-content" className="pairing-form" role="main"><span className="eyebrow">DESK YANTRA</span><h2>{loading?'Connecting to your workbench…':auth?'Connect this browser':'Desk Yantra is offline'}</h2>{auth?<><p>Use the pairing token from your local launcher. This gives your browser access to this workbench.</p><form onSubmit={event=>void pair(event)}><label>Launch token<input name="token" type="password" required autoComplete="off" placeholder="Paste your local pairing token" autoFocus/></label>{error&&<p className="pairing-error" role="alert">{error}</p>}<button disabled={pairing}>{pairing?'Connecting…':'Connect to workbench →'}</button></form><small>Provider credentials are entered separately in Settings.</small></>:<><p>{error||'Looking for the local service…'}</p>{!loading&&<button onClick={()=>void refresh()}>Retry connection</button>}</>}</main></div>;
   const visible=showTestData?state:personalState(state);
   const active=visible.runs.find((run:Item)=>run.id===current.id);
-  return <>{!online&&<div className="connection-banner" role="alert">Connection lost. Reconnecting to your workbench… Run history will reload when the service returns.</div>}{current.page==='Chat'?<Workspace state={visible} active={active} history={history} select={select} navigate={navigate} request={api} refresh={refresh}/>:<Management state={visible} page={current.page} navigate={navigate} request={api} refresh={refresh} select={select}/>}{fixtureConnections(state).size>0&&<label className="test-data-switch"><input type="checkbox" checked={showTestData} onChange={event=>{setShowTestData(event.target.checked);localStorage.setItem('paw.showTestData',String(event.target.checked));}}/>Show test data</label>}</>;
+  return <><a href="#main-content" className="skip-link">Skip to main content</a><div aria-live="polite" aria-atomic="true" className="sr-only">{connectionStatus}</div>{!online&&<div className="connection-banner" role="alert">Connection lost. Reconnecting to your workbench… Run history will reload when the service returns.</div>}{current.page==='Chat'?<Workspace state={visible} active={active} history={history} select={select} navigate={navigate} request={api} refresh={refresh}/>:<Management state={visible} page={current.page} navigate={navigate} request={api} refresh={refresh} select={select}/>}{fixtureConnections(state).size>0&&<label className="test-data-switch"><input type="checkbox" checked={showTestData} onChange={event=>{setShowTestData(event.target.checked);localStorage.setItem('paw.showTestData',String(event.target.checked));}}/>Show test data</label>}</>;
 }
 createRoot(document.getElementById('root')!).render(<App/>);

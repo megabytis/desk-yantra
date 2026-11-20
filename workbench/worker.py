@@ -107,6 +107,9 @@ class WorkExecutor(ToolExecutor):
                 if action.op=='shell' and isinstance(result,dict):
                     event(self.run_id,'command_result',{'command':action.command,'exit_status':result.get('exit_status'),'cwd':result.get('cwd')})
             event(self.run_id, "tool_result", result)
+            if action.op == "delegate" and isinstance(result, dict) and result.get("status") != "completed":
+                event(self.run_id, "tool_error", {"child": result.get("child"), "status": result.get("status"), "operation": "delegate"})
+                return WorkResult.from_text(f"Delegated worker ended with status '{result.get('status')}'. Recent events: " + json.dumps(redact(result.get("events", []))), is_error=True)
             if isinstance(result,dict) and result.get("exit_status",0)!=0:
                 event(self.run_id,"tool_error",{"exit_status":result["exit_status"],"operation":action.op})
                 return WorkResult.from_text(json.dumps(redact(result)),is_error=True)
