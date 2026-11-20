@@ -73,3 +73,12 @@ def test_origin_and_host_validation():
     # Missing x-paw CSRF header on POST rejected
     no_csrf = client.post("/api/runs", headers={"Host": "127.0.0.1:8765"}, json={})
     assert no_csrf.status_code == 403
+
+
+def test_chunked_payload_limit_rejects_actual_bytes_without_length():
+    client = TestClient(server.app)
+    client.cookies.set("paw", store.TOKEN)
+    chunks = iter((b"x" * (server.MAX_REQUEST_BODY // 2),) * 3)
+    response = client.post("/api/runs", headers={"Host": "127.0.0.1:8765", "x-paw": "1", "Content-Type": "application/json"}, content=chunks)
+    assert response.status_code == 413
+    assert "exceeds size limit" in response.json()["detail"]

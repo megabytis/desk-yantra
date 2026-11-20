@@ -81,7 +81,10 @@ async def security(request: Request, call_next):
     content_length = request.headers.get("content-length")
     if content_length:
         try:
-            if int(content_length) > MAX_REQUEST_BODY:
+            size = int(content_length)
+            if size < 0:
+                return JSONResponse({"detail": "Invalid Content-Length header"}, status_code=400)
+            if size > MAX_REQUEST_BODY:
                 return JSONResponse({"detail": "Request payload exceeds size limit"}, status_code=413)
         except ValueError:
             return JSONResponse({"detail": "Invalid Content-Length header"}, status_code=400)
@@ -91,6 +94,15 @@ async def security(request: Request, call_next):
             return JSONResponse({"detail": "Pair this browser with the local launch token"}, status_code=401)
         if request.method != "GET" and request.headers.get("x-paw") != "1":
             return JSONResponse({"detail": "Missing request protection"}, status_code=403)
+    if request.method in ("POST", "PUT", "PATCH"):
+        chunks = []
+        received = 0
+        async for chunk in request.stream():
+            received += len(chunk)
+            if received > MAX_REQUEST_BODY:
+                return JSONResponse({"detail": "Request payload exceeds size limit"}, status_code=413)
+            chunks.append(chunk)
+        request._body = b"".join(chunks)
     try:
         response = await call_next(request)
     except (ValueError, KeyError) as error:
