@@ -202,3 +202,23 @@ def test_revoke_before_shell_launch_blocks_process(tmp_path, monkeypatch):
     assert not worker.is_alive()
     assert getattr(result[0], "status_code", None) == 403
     assert not (tmp_path / "race-shell.txt").exists()
+
+
+def test_revoke_kills_running_shell_before_late_effect(tmp_path):
+    grant, run = setup_run(tmp_path)
+    client = TestClient(companion.app, headers={"Authorization": "Bearer " + TOKEN})
+    action = authorize(run, {"op": "shell", "command": "sleep 3; touch late-effect.txt"})
+    result = []
+    worker = threading.Thread(target=lambda: result.append(client.post("/execute/" + run["id"], json=action)))
+    worker.start()
+    deadline = time.monotonic() + 5
+    while run["id"] not in companion.PROCESSES and time.monotonic() < deadline:
+        time.sleep(.01)
+    assert run["id"] in companion.PROCESSES
+    process = companion.PROCESSES[run["id"]]
+    assert process.poll() is None
+    assert client.post("/revoke/" + grant["id"]).status_code == 200
+    worker.join(5)
+    assert not worker.is_alive()
+    assert process.poll() is not None
+    assert not (tmp_path / "late-effect.txt").exists()

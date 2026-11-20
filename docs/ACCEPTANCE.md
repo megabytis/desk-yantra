@@ -117,3 +117,7 @@ Contributor: **OpenAI Codex (GPT-6-sol)**. A write paused immediately after one-
 ## Shell launch revocation race — 2026-11-20
 
 Contributor: **OpenAI Codex (GPT-6-sol)**. Added deterministic test pausing a shell action after its exact approval was consumed, revoking its grant, then releasing execution. Companion returned HTTP 403 and the command created no file. `PAW_STATE=/tmp/desk-yantra-shell-race-full LITELLM_LOCAL_MODEL_COST_MAP=True .venv/bin/python -m pytest -q`: **47 passed, 3 warnings in 7.01s**. GitHub Actions run 44708949753 for prior commit was in progress when checked. This does not establish behavior for an already-running process.
+
+## Running shell revocation — 2026-11-20
+
+Contributor: **OpenAI Codex (GPT-6-sol)**. A real companion-approved shell command began `sleep 3; touch late-effect.txt`; grant revocation over companion HTTP terminated the process before the delayed file appeared. `PAW_STATE=/tmp/desk-yantra-active-revoke-full LITELLM_LOCAL_MODEL_COST_MAP=True .venv/bin/python -m pytest -q --tb=short`: **48 passed, 3 warnings in 7.05s**. The first focused assertion inspected a process entry removed during cleanup and was corrected to retain the process handle; no runtime change was needed. GitHub Actions run 44708949753 for commit 7737305 completed successfully; run 44709168423 was in progress when checked.
