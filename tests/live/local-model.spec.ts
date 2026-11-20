@@ -1,0 +1,60 @@
+import {test,expect} from '@playwright/test';
+import {readFileSync,mkdtempSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+
+test('LIVE: discover local llama.cpp model, infer, execute approved tool and download actual file',async({page})=>{
+  await page.addInitScript(()=>localStorage.setItem('paw.showTestData','true'));
+  await expect.poll(async()=>{
+    try {return (await page.request.get((process.env.PAW_LIVE_MODEL_URL || 'http://127.0.0.1:18768/v1').replace(/\/v1\/?$/,'')+'/health')).status();}
+    catch {return 0;}
+  },{timeout:120000}).toBe(200);
+  const root=mkdtempSync(join(tmpdir(),'paw-live-model-'));
+  const name='Live local agent '+Date.now();
+  await page.goto('/');
+  await page.getByLabel('Launch token').fill(readFileSync('.state/token','utf8').trim());
+  await page.getByRole('button',{name:'Connect to workbench'}).click();
+  await page.getByRole('button',{name:/Settings & providers/}).click();
+  await page.getByRole('button',{name:'Add connection',exact:false}).click();
+  await page.getByLabel('Name',{exact:true}).fill('Live llama.cpp local model');
+  await page.getByRole('combobox',{name:'Provider',exact:true}).selectOption('compatible');
+  await page.getByLabel('Base URL').fill(process.env.PAW_LIVE_MODEL_URL || 'http://127.0.0.1:18768/v1');
+  const saved=page.waitForResponse(response=>response.url().endsWith('/api/providers')&&response.request().method()==='POST');
+  await page.getByRole('button',{name:'Save connection'}).click();
+  const connection=await (await saved).json();
+  await page.getByRole('button',{name:'Refresh models'}).click();
+  await page.getByRole('combobox',{name:'Model',exact:true}).selectOption('qwen3-local');
+  await page.getByRole('button',{name:'Test inference'}).click();
+  await expect(page.getByRole('status')).toContainText('Inference succeeded',{timeout:90000});
+  await page.getByRole('button',{name:'Computer access',exact:true}).click();
+  await page.getByRole('button',{name:/Add workspace/}).click();
+  await page.getByRole('button',{name:/This computer/}).click();
+  await page.getByLabel('Project folder').fill(root);
+  await page.getByLabel('files',{exact:true}).check();
+  await page.getByRole('button',{name:'Save workspace'}).click();
+  await expect(page.getByRole('heading',{name:root,exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Agents',exact:true}).click();
+  await page.getByRole('button',{name:/Create agent/}).first().click();
+  await page.getByLabel('Name',{exact:true}).fill(name);
+  await page.getByLabel('Instructions').fill('Use the work tool to perform the requested file operation exactly, then finish. Do not perform unrelated work. /no_think');
+  await page.getByRole('combobox',{name:'Connection',exact:true}).selectOption(connection.id);
+  await page.getByRole('combobox',{name:'Model',exact:true}).selectOption('qwen3-local');
+  await page.getByLabel('files',{exact:true}).check();
+  await page.getByLabel(`host · ${root}`,{exact:true}).check();
+  await page.getByRole('button',{name:'Save agent'}).click();
+  await expect(page.getByRole('heading',{name,exact:true})).toBeVisible();
+  await page.getByRole('button',{name:/Back to conversation/}).click();
+  await page.getByLabel('Agent',{exact:true}).selectOption({label:name});
+  await page.getByLabel('Workspace',{exact:true}).selectOption({label:`host · ${root}`});
+  await page.getByLabel('Message').fill('Call write_file with path="live-result.txt" and content="LOCAL_MODEL_TOOL_OK". After it succeeds, finish. /no_think');
+  await page.getByRole('button',{name:'Start task',exact:true}).click();
+  await expect(page.locator('.inline-approval pre')).toContainText('LOCAL_MODEL_TOOL_OK',{timeout:120000});
+  await page.getByRole('button',{name:'Approve this action',exact:true}).click();
+  await expect(page.locator('.execution-pill')).toContainText('completed',{timeout:120000});
+  expect(readFileSync(join(root,'live-result.txt'),'utf8')).toBe('LOCAL_MODEL_TOOL_OK');
+  await page.getByRole('button',{name:'Files',exact:true}).click();
+  const waiting=page.waitForEvent('download');
+  await page.getByRole('link',{name:/live-result.txt/}).click();
+  const download=await waiting;
+  expect(readFileSync((await download.path())!,'utf8')).toBe('LOCAL_MODEL_TOOL_OK');
+});

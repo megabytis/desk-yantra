@@ -1,0 +1,491 @@
+import asyncio
+import json
+import os
+import secrets
+import signal
+import subprocess
+import sys
+import time
+import threading
+import uuid
+from contextlib import asynccontextmanager
+from pathlib import Path
+
+import httpx
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
+
+from .providers import DEFAULTS, adapter, public
+from .client import companion
+from . import store
+from .store import STATE, CIPHER, all_objects, event, events, get, put, redact, transition_run, rotate_token
+
+WORKERS = {}
+MAX_REQUEST_BODY = 10 * 1024 * 1024
+
+
+@asynccontextmanager
+async def lifespan(app):
+    recover = []
+    for run in all_objects("runs"):
+        if run["status"] in ("queued", "running", "approval", "paused"):
+            cleanup_confirmed = False
+            try:
+                cleanup_confirmed = companion("/stop/" + run["id"], {}, timeout=20).get("stopped") is True
+            except Exception:
+                pass
+            kill_worker(run["id"])
+            history = events(run["id"])
+            uncertain = any(item["kind"] in ("action_started", "tool_call") and item["data"].get("op") not in ("read","list") for item in history)
+            try:
+                grant = get("grants", run["grant"])
+                grant_valid = not grant.get("revoked", False)
+            except KeyError:
+                grant_valid = False
+            run["status"] = "queued" if cleanup_confirmed and not uncertain and grant_valid and not run.get("parent") else "review"
+            put("runs", run)
+            if run["status"] == "queued":
+                recover.append(run["id"])
+                event(run["id"], "recovery", "Safe work recovered: no mutating tool calls were issued. Repeating inference/read operations only; future mutations still require new approval.")
+            else:
+                detail = "Companion did not confirm prior tool cleanup. " if not cleanup_confirmed else ""
+                event(run["id"], "recovery", detail + "Worker interrupted. Outcome may be unknown. No actions replayed. Inspect files and external state before starting a new task.")
+    for ident in recover:
+        try:
+            companion("/recover-safe/" + ident, {})
+            start_worker(ident)
+        except Exception:
+            run = get("runs", ident)
+            run["status"] = "review"
+            put("runs", run)
+            event(ident, "recovery", "Companion could not confirm safe recovery; manual review required")
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
+
+
+@app.middleware("http")
+async def security(request: Request, call_next):
+    origin = request.headers.get("origin")
+    allowed = {"http://127.0.0.1:8765", "http://localhost:8765"}
+    if request.headers.get("host") not in ("127.0.0.1:8765", "localhost:8765", "testserver") or (origin and origin not in allowed):
+        return JSONResponse({"detail": "Origin or host rejected"}, status_code=403)
+    content_length = request.headers.get("content-length")
+    if content_length:
+        try:
+            if int(content_length) > MAX_REQUEST_BODY:
+                return JSONResponse({"detail": "Request payload exceeds size limit"}, status_code=413)
+        except ValueError:
+            return JSONResponse({"detail": "Invalid Content-Length header"}, status_code=400)
+    if request.url.path.startswith("/api/") and request.url.path != "/api/login":
+        token = request.cookies.get("paw", "")
+        if not secrets.compare_digest(token, store.TOKEN):
+            return JSONResponse({"detail": "Pair this browser with the local launch token"}, status_code=401)
+        if request.method != "GET" and request.headers.get("x-paw") != "1":
+            return JSONResponse({"detail": "Missing request protection"}, status_code=403)
+    try:
+        response = await call_next(request)
+    except (ValueError, KeyError) as error:
+        return JSONResponse({"detail": redact(str(error))}, status_code=400)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'"
+    return response
+
+
+@app.post("/api/login")
+def login(body: dict):
+    if not secrets.compare_digest(str(body.get("token", "")), store.TOKEN):
+        raise HTTPException(401, "Invalid launch token")
+    response = JSONResponse({"ok": True})
+    response.set_cookie("paw", store.TOKEN, httponly=True, samesite="strict")
+    return response
+
+
+@app.post("/api/logout")
+def logout():
+    response = JSONResponse({"ok": True, "message": "Logged out"})
+    response.delete_cookie("paw", httponly=True, samesite="strict")
+    return response
+
+
+@app.post("/api/rotate-token")
+def rotate_session_token():
+    new_token = rotate_token()
+    response = JSONResponse({"ok": True, "message": "Token rotated successfully"})
+    response.set_cookie("paw", new_token, httponly=True, samesite="strict")
+    return response
+
+
+@app.get("/api/state")
+def state():
+    try:
+        capabilities = companion("/capabilities")
+    except Exception:
+        capabilities = {"error": "Companion unavailable; start both services"}
+    return redact({"providers": [public(item) for item in all_objects("providers")], "agents": all_objects("agents"), "runs": all_objects("runs"), "grants": all_objects("grants"), "approvals": all_objects("approvals"), "artifacts": [{name: value for name, value in item.items() if name != "path"} for item in all_objects("artifacts")], "budgets": all_objects("budgets"), "defaults": all_objects("settings"), "provider_types": DEFAULTS, "capabilities": capabilities})
+
+
+@app.post("/api/providers")
+def save_provider(body: dict):
+    kind = body["type"]
+    if kind not in DEFAULTS:
+        raise ValueError("Unknown provider type")
+    url = body.get("url") or DEFAULTS[kind]
+    parsed = httpx.URL(url)
+    if parsed.scheme not in ("http", "https") or parsed.username or parsed.password or parsed.query:
+        raise ValueError("Use an HTTP endpoint without embedded credentials or query parameters")
+    previous = get("providers", body["id"]) if body.get("id") else {}
+    unchanged=previous.get('type')==kind and previous.get('url')==url and not body.get('key')
+    provider = {"id": previous.get("id", str(uuid.uuid4())), "name": body["name"], "type": kind, "url": url, "secret": CIPHER.encrypt(body["key"].encode()).decode() if body.get("key") else previous.get("secret", ""), "models": previous.get("models", []) if unchanged else [],"last_test":previous.get('last_test') if unchanged else None,"archived":previous.get('archived',False)}
+    return public(put("providers", provider))
+
+
+@app.post("/api/providers/{ident}/discover")
+def discover(ident: str):
+    provider = get("providers", ident)
+    try:
+        models = adapter(provider).discover()
+    except httpx.RequestError as error:
+        raise ValueError("Server unreachable; check URL, listening address and network") from error
+    provider["models"] = models + [item for item in provider["models"] if item["source"] == "manual" and item["id"] not in {model["id"] for model in models}]
+    put("providers", provider)
+    return {"models": models, "message": "Models refreshed" if models else "Server returned an empty model list; install a model or enter an ID manually"}
+
+
+@app.post("/api/providers/{ident}/manual")
+def manual(ident: str, body: dict):
+    provider = get("providers", ident)
+    provider["models"].append({"id": body["model"], "source": "manual", "tools": None, "vision": None, "streaming": None})
+    return public(put("providers", provider))
+
+
+@app.post("/api/providers/{ident}/test")
+def test_provider(ident: str, body: dict):
+    from openhands.sdk import LLM
+    from openhands.sdk.llm import Message, TextContent
+    provider=get('providers',ident)
+    try:
+        llm = LLM(**adapter(provider).llm_config(body["model"]), usage_id="connection-test", timeout=30, num_retries=0)
+        llm.completion(messages=[Message(role="user", content=[TextContent(text="Reply OK")])])
+        provider['last_test']={'ok':True,'model':body['model'],'time':time.time()}
+        put('providers',provider)
+        return {"message": "Inference succeeded with this connection and model"}
+    except Exception as error:
+        detail="Inference failed: " + str(redact(str(error)))[:500]
+        provider['last_test']={'ok':False,'model':body['model'],'time':time.time(),'message':detail}
+        put('providers',provider)
+        raise ValueError(detail) from error
+
+
+@app.post("/api/default")
+def default(body: dict):
+    if get('providers',body['connection']).get('archived'):
+        raise ValueError('Restore this connection before using it as the default')
+    return put("settings", {"id": "default", "connection": body["connection"], "model": body["model"]})
+
+
+@app.post("/api/agents")
+def agent(body: dict):
+    previous=get('agents',body['id']) if body.get('id') else {}
+    return put("agents", {"id": body.get("id") or str(uuid.uuid4()), "name": body["name"], "instructions": body["instructions"], "connection": body.get("connection", ""), "model": body.get("model", ""), "tools": body.get("tools", ["files"]), "grants": body.get("grants", []),"archived":previous.get('archived',False)})
+
+
+@app.post('/api/{kind}/{ident}/archive')
+def archive(kind:str,ident:str,body:dict):
+    if kind not in ('providers','agents'):
+        raise HTTPException(404,'Unknown archive collection')
+    item=get(kind,ident)
+    item['archived']=body.get('archived',True) is not False
+    put(kind,item)
+    return public(item) if kind=='providers' else item
+
+
+@app.post("/api/grants")
+def grant(body: dict):
+    root = Path(body.get("root") or str(STATE)).resolve()
+    if not root.is_dir():
+        raise ValueError("Select an existing directory")
+    if body["mode"] not in ("host", "sandbox"):
+        raise ValueError("Unknown execution mode")
+    shared = str(Path(body["shared"]).resolve()) if body.get("shared") else ""
+    if shared and (not Path(shared).is_dir() or "," in shared):
+        raise ValueError("Select an existing shared directory without commas in its path")
+    return put("grants", {"id": str(uuid.uuid4()), "mode": body["mode"], "root": str(root), "shared": shared, "capabilities": body["capabilities"], "revoked": False})
+
+
+@app.post("/api/grants/{ident}/revoke")
+def revoke(ident: str):
+    grant = get("grants", ident)
+    grant["revoked"] = True
+    put("grants", grant)
+    try:
+        companion("/revoke/" + ident, {})
+    except Exception:
+        pass
+    for run in all_objects("runs"):
+        if run["grant"] == ident and run["status"] in ("running", "queued", "paused"):
+            stop(run["id"])
+    return grant
+
+
+def new_run(body, parent=None):
+    profile = get("agents", body["agent"])
+    if profile.get('archived'):
+        raise ValueError('This agent is archived. Restore it before starting work.')
+    grant = get("grants", body["grant"])
+    if grant["revoked"] or grant["id"] not in profile["grants"]:
+        raise ValueError("Agent lacks this workspace grant")
+    if grant["mode"] == "host" and not Path(grant["root"]).is_dir():
+        raise ValueError("The authorized project folder no longer exists. Create a new workspace grant for an existing folder.")
+    if grant["mode"] == "sandbox":
+        status = companion("/capabilities").get("sandbox",{})
+        if not status.get("ready"):
+            raise ValueError(status.get("reason","Companion could not confirm Docker sandbox readiness"))
+    default = next((item for item in all_objects("settings") if item["id"] == "default"), {})
+    connection = profile["connection"] or default.get("connection", "")
+    model = profile["model"] or default.get("model", "")
+    if not parent:
+        connection = body.get("connection") or connection
+        model = body.get("model") or model
+    if not model.strip():
+        raise ValueError("Choose a model for this task or configure a global default")
+    if not connection:
+        raise ValueError("Choose a provider connection for this task")
+    if get("providers", connection).get('archived'):
+        raise ValueError('This connection is archived. Choose an active connection or restore it.')
+    tools = set(profile["tools"])
+    if parent:
+        parent = get("runs", parent["id"])
+        if parent["status"] != "running":
+            raise ValueError("Parent is no longer running")
+        tools &= set(parent["tools"])
+        if body["grant"] != parent["grant"] or parent["depth"] >= 2:
+            raise ValueError("Delegation exceeds parent authority")
+    run = {"id": str(uuid.uuid4()), "agent": profile["id"], "connection": connection, "model": model, "grant": grant["id"], "mode": grant["mode"], "machine": os.uname().nodename, "task": body["task"], "status": "queued", "tools": sorted(tools), "depth": parent["depth"] + 1 if parent else 0, "parent": parent["id"] if parent else None, "created": time.time()}
+    run["root_run"] = parent.get("root_run", parent["id"]) if parent else run["id"]
+    run["conversation"] = body.get("conversation") or run["id"]
+    run["workspace_id"] = run["conversation"] if run["mode"]=="sandbox" and not parent else run["id"]
+    run["context"] = body.get("context", "")
+    put("runs", run)
+    event(run["id"], "created", run)
+    start_worker(run["id"])
+    return run
+
+
+def start_worker(ident):
+    process = subprocess.Popen([sys.executable, "-m", "workbench.worker", ident], start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    WORKERS[ident] = process
+    put("workers", {"id": ident, "pid": process.pid})
+    threading.Thread(target=watch_worker,args=(ident,process),daemon=True).start()
+
+
+def watch_worker(ident,process):
+    returncode=process.wait()
+    history=events(ident)
+    uncertain=any(item['kind']=='action_started' and item['data'].get('op') not in ('read','list') for item in history)
+    status='review' if uncertain else 'failed'
+    changed=transition_run(ident,('queued','running','approval'),status)
+    if changed:
+        event(ident,'error',{'message':'Worker exited unexpectedly. No actions were replayed. Inspect actual results before starting replacement work.','exit_status':returncode,'review_required':uncertain})
+        try:
+            companion('/stop/'+ident,{},timeout=5)
+        except Exception:
+            event(ident,'stop_incomplete','The companion could not confirm tool cleanup; use the local stop control.')
+    if WORKERS.get(ident) is process:
+        WORKERS.pop(ident,None)
+
+
+@app.post("/api/runs")
+def launch(body: dict):
+    return new_run({name:body[name] for name in ("agent","grant","task","connection","model") if name in body})
+
+
+@app.get("/api/conversations/{ident}")
+def conversation_history(ident: str):
+    messages = []
+    runs = sorted((run for run in all_objects("runs") if run.get("conversation",run["id"]) == ident), key=lambda run:run["created"])
+    for run in runs:
+        messages.append({"id":run["id"],"run":run["id"],"role":"user","text":run["task"]})
+        for item in events(run["id"]):
+            data = item["data"]
+            if item["kind"] == "sdk" and data.get("kind") == "MessageEvent" and data.get("source") == "agent":
+                text = "\n".join(part["text"] for part in data.get("llm_message",{}).get("content",[]) if part.get("type") == "text")
+                if text:
+                    messages.append({"id":str(item["seq"]),"run":run["id"],"role":"assistant","text":text})
+            elif item['kind']=='sdk' and data.get('kind')=='ActionEvent' and data.get('action',{}).get('kind')=='FinishAction':
+                text=data['action'].get('message','')
+                if text:
+                    messages.append({'id':str(item['seq']),'run':run['id'],'role':'assistant','text':text})
+    return {"messages":messages,"runs":[run["id"] for run in runs]}
+
+
+@app.post("/api/runs/{ident}/followup")
+def followup(ident: str, body: dict):
+    previous = get("runs", ident)
+    if previous["status"] not in ('completed','reviewed'):
+        raise ValueError("Review interrupted work before creating a new task; follow-up is available after completion")
+    transcript = [{"kind":item["kind"],"data":item["data"]} for item in events(ident) if item["kind"] in ("tool_result","tool_error","review_resolution") or (item["kind"] == "sdk" and item["data"].get("kind") in ('MessageEvent','ActionEvent'))]
+    context = previous.get("context", "")[-16000:] + "\nPrevious task: " + previous["task"] + "\nObserved history: " + json.dumps(transcript)[-24000:]
+    return new_run({"agent":previous["agent"],"grant":previous["grant"],"connection":previous["connection"],"model":previous["model"],"task":body["task"],"conversation":previous.get("conversation",ident),"context":context})
+
+
+@app.post('/api/runs/{ident}/resolve-review')
+def resolve_review(ident:str,body:dict):
+    run=get('runs',ident)
+    if run['status'] not in ('review','failed','stopped'):
+        raise ValueError('Only interrupted, failed, or stopped runs can be reviewed')
+    note=str(body.get('note','')).strip()
+    if not note or len(note)>8000:
+        raise ValueError('Record what you inspected and the observed outcome (up to 8000 characters)')
+    if any(child.get('parent')==ident and child['status'] in ('queued','running','approval','paused') for child in all_objects('runs')):
+        raise ValueError('Stop delegated work before closing this review')
+    kill_worker(ident)
+    # Do not enable replacement work while an earlier command may still be running.
+    try:
+        result=companion('/stop/'+ident,{},timeout=20)
+    except Exception as error:
+        raise ValueError('Companion could not confirm cleanup. Restore it and use Stop before resolving this review.') from error
+    if not result.get('stopped'):
+        raise ValueError('Companion did not confirm cleanup; review remains open')
+    resolution={'note':redact(note),'time':time.time(),'previous_status':run['status'],'actions_replayed':False}
+    changed=transition_run(ident,('review','failed','stopped'),'reviewed',{'review_resolution':resolution})
+    if changed is None:
+        raise ValueError('Run state changed; reload before resolving the review')
+    for approval in all_objects('approvals'):
+        if approval['run']==ident and approval['status'] in ('pending','approved'):
+            approval['status']='cancelled'
+            put('approvals',approval)
+    event(ident,'review_resolution',resolution)
+    return changed
+
+
+@app.post("/api/runs/{ident}/stop")
+def stop(ident: str):
+    run = get("runs", ident)
+    run["status"] = "stopped"
+    put("runs", run)
+    for child in all_objects("runs"):
+        if child.get("parent") == ident and child["status"] not in ("completed", "failed", "stopped"):
+            stop(child["id"])
+    try:
+        companion("/stop/" + ident, {})
+    except Exception:
+        run["status"] = "review"
+        put("runs", run)
+        event(ident, "stop_incomplete", "Worker stop requested; companion unavailable. Running tool termination could not be confirmed. Use the local stop control after restoring the companion.")
+    finally:
+        process = WORKERS.get(ident)
+        if process and process.poll() is None:
+            os.killpg(process.pid, signal.SIGTERM)
+        else:
+            kill_worker(ident)
+    event(ident, "stopped", {"status": run["status"], "worker": "cancellation requested"})
+    return run
+
+
+@app.post("/api/runs/{ident}/browser-control")
+def browser_control(ident:str,body:dict):
+    run=get("runs",ident)
+    grant=get("grants",run["grant"])
+    if run["mode"]!="sandbox" or "browser" not in run["tools"] or "browser" not in grant["capabilities"] or grant["revoked"]:
+        raise ValueError("This run does not have sandbox browser authority")
+    operation=body.get("operation")
+    if operation=="begin":
+        if run["status"]!="completed":
+            raise ValueError("Browser control is available after the agent finishes, so user and agent actions cannot overlap")
+        run["status"]="paused"
+        put("runs",run)
+        event(ident,"browser_control","User took control of the sandbox browser")
+    elif operation=="end":
+        if run["status"]!="paused":
+            raise ValueError("Browser control is not active")
+        run["status"]="completed"
+        put("runs",run)
+        event(ident,"browser_control","User returned browser control; inspect the current page before new work")
+        return {"status":"completed"}
+    if get("runs",ident)["status"]!="paused":
+        raise ValueError("Take browser control before sending actions")
+    if operation not in ("begin","inspect","navigate","click","type","press"):
+        raise ValueError("Unsupported browser control action")
+    action={"op":"browser","manual":True,"browser_action":operation if operation in ("click","type","press") else "inspect"}
+    if operation=="navigate":
+        url=str(body.get("url",""))
+        if httpx.URL(url).scheme not in ("http","https"):
+            raise ValueError("Browser control accepts HTTP and HTTPS navigation URLs")
+        action["url"]=url
+    if operation=="click":
+        action["x"]=max(0,min(10000,int(body["x"])))
+        action["y"]=max(0,min(10000,int(body["y"])))
+    if operation=="type":
+        action["content"]=str(body.get("text",""))[:10000]
+    if operation=="press":
+        key=str(body.get("key",""))
+        if key not in ("Enter","Tab","Backspace","Escape","ArrowUp","ArrowDown","ArrowLeft","ArrowRight"):
+            raise ValueError("Unsupported browser key")
+        action["key"]=key
+    approval={"id":str(uuid.uuid4()),"run":ident,"action":action,"status":"approved","source":"explicit-user-browser-control"}
+    put("approvals",approval)
+    event(ident,"browser_control_action",action)
+    result=companion("/execute/"+ident,action|{"approval":approval["id"]})
+    event(ident,"tool_result",result["result"])
+    return {"status":"paused","result":result["result"]}
+
+
+def kill_worker(ident):
+    try:
+        process_id = get("workers", ident)["pid"]
+        command = Path(f"/proc/{process_id}/cmdline").read_bytes().split(b"\0")
+        if b"workbench.worker" in command and ident.encode() in command:
+            os.killpg(process_id, signal.SIGTERM)
+    except (KeyError, FileNotFoundError, ProcessLookupError):
+        pass
+
+
+@app.get("/api/runs/{ident}/events")
+async def stream(ident: str, request: Request, after: int = 0):
+    get("runs",ident)
+    cursor_start=max(after,int(request.headers.get("last-event-id","0")))
+    async def generate():
+        cursor = cursor_start
+        while True:
+            for item in events(ident, cursor):
+                cursor = item["seq"]
+                yield f"id: {cursor}\ndata: {json.dumps(item)}\n\n"
+            yield ": keepalive\n\n"
+            await asyncio.sleep(0.5)
+    return StreamingResponse(generate(), media_type="text/event-stream")
+
+
+@app.post("/api/approvals/{ident}")
+def approve(ident: str, body: dict):
+    approval = get("approvals", ident)
+    if approval["status"] != "pending":
+        raise ValueError("Approval already resolved")
+    if get("runs", approval["run"])["status"] != "running":
+        raise ValueError("This run is no longer running")
+    approval["status"] = "approved" if body.get("approved") else "denied"
+    put("approvals", approval)
+    event(approval["run"], "decision", {"id": ident, "status": approval["status"]})
+    return approval
+
+
+@app.get("/api/artifacts/{ident}")
+def artifact(ident: str):
+    item = get("artifacts", ident)
+    return FileResponse(item["path"], filename=item["name"], media_type="application/octet-stream")
+
+
+@app.get("/api/artifacts/{ident}/preview")
+def preview(ident: str):
+    item = get("artifacts", ident)
+    with open(item["path"], "rb") as stream:
+        if stream.read(8) != b"\x89PNG\r\n\x1a\n":
+            raise HTTPException(415, "Only PNG previews are supported")
+    return FileResponse(item["path"], media_type="image/png")
+
+
+if Path("dist").exists():
+    app.mount("/", StaticFiles(directory="dist", html=True), name="web")

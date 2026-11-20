@@ -1,0 +1,164 @@
+# Desk Yantra — production product plan and handoff
+
+**Owner's goal:** Build a complete, self-hosted, browser-first personal AI agent comparable in reliability and usability to mature open-source agent products. It must support hosted and local models; isolated Docker work; explicitly authorized access to an Arch Linux/Hyprland host; persistent, inspectable work; multiple agents; and an installation path others can use. The target is a production-grade product, not a toy or a prototype.
+
+**Current truth (2026-11-20):** A runnable, locally verified **single-user workbench** exists. The owner created the official GitHub repository `megabytis/desk-yantra` and cloned it at the path below. It is **not yet production-grade or validated for untrusted users or internet exposure**. “Production build” means the frontend bundles successfully; it is not a production-readiness claim. No percentage-complete estimate is justified. Use the status and evidence for each requirement below.
+
+**Attribution:** The implementation and verification documented through 2026-11-20 were performed by **OpenAI Codex (GPT-6 family)** in this workspace, working under the owner's direction. This file and its initial inventory were written by **OpenAI Codex (GPT-6-sol)**. These labels identify the assistant used in the session; they are not a claim that a human senior engineer independently reviewed the code. Future assistants must add dated entries with their own names and exact changes under [Contributor log](#contributor-log). Do not overwrite earlier attribution or claim to have run tests that someone else ran.
+
+## How to resume safely
+
+1. Read this file, `README.md`, `docs/ACCEPTANCE.md`, `docs/ARCHITECTURE.md`, and `docs/UPSTREAM-REVIEW.md`. Then inspect current source and Git status. Do not assume processes or `/tmp` files from an earlier session still exist.
+2. The project root is `/home/megabytis/Github/personal/desk-yantra` on the owner's machine. Source of truth is this repository. `.state/` is private runtime state and ignored; never commit it, provider keys, desktop captures, test downloads, or local model weights.
+3. Run `uv sync --locked --python 3.13`, `npm ci`, `npm run build`, and `PAW_STATE=/tmp/paw-unit-check LITELLM_LOCAL_MODEL_COST_MAP=True uv run pytest -q` as needed. The first three require installed tools/network; use existing installations when available. Build the Docker image with `docker build -t paw-sandbox:local sandbox` and launch with `uv run python -m workbench` when verifying live paths. The local browser URL is `http://127.0.0.1:8765`; the launcher prints a private pairing token. Do not paste that token into public logs.
+4. Fixture UI tests require the app plus `uv run python tests/fixture_server.py` on loopback port 18767, then `npx playwright test`. The real-model suite is separate: `npx playwright test --config playwright.live.config.ts`. Check its fixture/model requirements before running it. A test name containing “LIVE” does not make a scripted response live; inspect the test and record what was real.
+5. Work in small, runnable milestones. For each change update the status below, include exact commands and observed results in `docs/ACCEPTANCE.md`, and append a contributor entry. If a test is blocked by missing credentials, graphical session, or daemon, continue independent work and label only that test blocked.
+6. Never silently repeat uncertain shell commands, web submissions, or external writes after a restart. Preserve run/event/approval evidence. Obtain the owner's exact approval for operations that send, publish, modify external accounts, elevate privileges, or grant host access.
+
+## Existing product, file by file
+
+| Area | Built now | Main files | Evidence / limit |
+| --- | --- | --- | --- |
+| Foundation | Python OpenHands SDK 1.62.0 runs the agent loop and model calls; custom focused tools route effects through the companion. React/TypeScript/Vite UI; FastAPI same-origin app and separate loopback companion. Node is only a build tool. | `pyproject.toml`, `uv.lock`, `package.json`, `package-lock.json`, `workbench/worker.py`, `workbench/server.py`, `workbench/companion.py` | SDK tool roundtrip fixture passes. Architecture choices and upstream revisions in `docs/ARCHITECTURE.md`. |
+| Browser entry | Local pairing token, HttpOnly cookie, origin/host checks, CSRF header, reconnect banner, hash navigation. | `workbench/server.py`, `workbench/store.py`, `web/main.tsx` | Local single-user design. No public-network deployment claim. |
+| Providers | Independent named connections for OpenAI, Anthropic, Gemini, OpenRouter, xAI, Ollama, LM Studio, and compatible APIs; server-side encrypted keys; discovery adapters/pagination where exposed; manual IDs; inference test; global default; model overrides; archive/restore. Unknown capability displayed as unknown. | `workbench/providers.py`, `workbench/server.py`, `web/Management.tsx` | HTTP protocol fixtures and real local llama.cpp inference pass. Native Ollama and paid hosted-provider journeys remain unverified. Catalog suggestions are absent. |
+| Agent profiles | Name, instructions, connection/model, tool choices, workspace grants, archive/restore. Worker delegation with parent/profile grant intersection, depth limit 2, tool budgets 30 per worker and 90 per task tree. | `workbench/runtime_context.py`, `workbench/worker.py`, `workbench/server.py`, `web/Management.tsx` | Fixture delegation survives tab closure; limited live-model task examples. No large-scale multi-agent workload evidence. |
+| Sandbox | Docker container per conversation; unprivileged user, dropped capabilities, process/CPU/memory limits, optional explicit read-only `/shared`; file/terminal/browser tools. Persistent Chromium, navigation, interactions, screenshots, post-run visible browser takeover. | `sandbox/Dockerfile`, `sandbox/action.py`, `sandbox/browser_service.py`, `workbench/companion.py`, `web/BrowserPanel.tsx` | Real-model Docker browse → file → download and actual read-only-share/cleanup probes pass. Full desktop/VNC takeover, network isolation policy, lifecycle/cleanup management, and adversarial isolation review remain. |
+| Host access | Authenticated local companion with independently granted file, shell, screen, input; scoped file operations reject traversal, symlinks, hardlinks, special files and private state. Shell is deliberately account-wide and needs exact approval. Process-group stop and grant revocation. | `workbench/companion.py`, `workbench/client.py`, `web/Management.tsx` | Real temporary Git repair passed with Qwen3-1.7B; denial/revocation/stop passed in fixtures; `grim` screen and `wtype` keyboard verified on Hyprland. Pointer and portal consent session unverified. |
+| Runs and recovery | SQLite WAL objects/events, encrypted credentials, run-specific model/connection/mode/machine, SSE events, conversations, approvals, artifacts, followups, subprocess workers, stop/restart supervision. Safe read-only recovery requires companion-confirmed cleanup; uncertain effects or unconfirmed cleanup go to review. User review notes permit fresh followup without replay. Terminal output capture is bounded per command. | `workbench/store.py`, `workbench/server.py`, `workbench/worker.py`, `workbench/companion.py`, `web/Workspace.tsx` | Browser reconnect/delegation fixture passes; unit recovery/stop and noisy-subprocess tests pass. Full SDK checkpoints, per-run/disk quotas and crash/fault-injection matrix absent. |
+| UI and UX | Redesigned pairing, chat/workspace split view, guided setup, settings sidebar, connection cards/model pane, agent editor, permission cards, runs search, artifacts/downloads, Markdown/code/table rendering, action/diff previews, responsive navigation, browser panel. Scripted test records hidden reversibly. | `web/*.tsx`, `web/*.css` | Four fixture Chromium UI tests passed together; screenshots inspected. Accessibility, varied device widths, long-run usability, and independent design review remain. |
+| Tests and docs | Python fixtures, browser fixtures, live local-model/Docker/host probes, Arch setup, CI workflow, architecture/acceptance/upstream records. | `tests/`, `.github/workflows/`, `README.md`, `docs/` | Last recorded run: 44 Python tests, four fixture browser tests, real-model and Docker journeys. Official remote configured; no production release artifact. |
+
+### Important boundaries already established
+
+- OpenHands SDK owns inference/agent iteration; our companion owns actual effect permissions. Do not register an SDK terminal/file tool that bypasses companion enforcement.
+- Browser pairing authenticates the interface; each host or mutating sandbox action still needs a grant and exact approval. Host shell starting in a project folder still reaches the Linux account wherever that account can reach.
+- Sandbox Chromium screenshots are different from host screen captures. `wtype` keyboard verification is different from host pointer verification. Do not merge their evidence.
+- A completed SDK run means the loop ended. It does not prove a task is correct. The 0.6B local model failed the real Git repair while 1.7B passed; the failed result remains in the acceptance ledger.
+- Secrets are redacted from structured events and text logs where known. Binary/image contents cannot be safely assumed redacted. Approved screenshots may be forwarded only when vision capability is known; real vision-model inference has not been verified.
+- The official destination is `git@github.com:megabytis/desk-yantra.git`. Check `git status`, the remote branch, CI, and public visibility before claiming publication of any revision. Never push ignored local state.
+
+## Production definition and release gates
+
+“Done” requires **all** applicable gates, evidence for each, and documentation a new user can follow without this chat. These are target acceptance criteria, not claims that work is complete.
+
+| Gate | Required result |
+| --- | --- |
+| Core user journey | New user installs, pairs browser, connects local **and** hosted providers, discovers/models/tests them, chooses agent and workspace, runs a real task, watches actual actions, approves/denies, downloads and verifies a real result. UI automation and separate live evidence. |
+| Safety | Untrusted task/page/file content cannot expand grants. Companion checks authorization at execution time. Denied/revoked actions never execute; stop terminates local and Docker processes; duplicate approvals and uncertain external writes never replay. Independent adversarial review and race/fault tests. |
+| Reliability | Crash/restart, tab closure, provider outage, Docker outage, long output, stale approvals, worker death, and disk errors have explicit outcomes. Recover safe state; mark uncertain effects for review. Backup/restore and schema migrations work on real data. |
+| UX | Complete, accessible, keyboard-usable, responsive flows with useful empty/error/loading states; legible action evidence and provenance; validated by actual user tasks, not screenshots alone. |
+| Distribution | Reproducible clean Arch install and tested distribution/release process; pinned dependencies/images, license and notices, upgrade/rollback instructions, secrets excluded, public repository and CI. |
+| Scaling claim | Define whether target means single-user on one machine, multiple users, or hosted service. Benchmark the chosen target and enforce isolation appropriate to it. Current design is only single-user loopback. Do not expose current server directly to the internet. |
+
+## Phased backlog — build and verify in order
+
+Each item should become an issue or change with a clear owner, code path, acceptance test, and evidence. Cross-cutting security work runs throughout every phase. Priority reflects dependencies; phases do not grant permission to skip later gates.
+
+### Phase 0 — repository and reproducibility (partly built)
+
+- [x] Separate local repository; source, lockfiles, `.gitignore`, Arch README, fixture CI workflow, architecture decision record and upstream revision/license notes.
+- [ ] Inspect status and secret scan; remove any accidental personal data and test artifacts from tracked files. Add LICENSE, contribution guide, security policy, support matrix, code of conduct if public community project warrants it, and release/version policy.
+- [x] Owner created and cloned the official `megabytis/desk-yantra` GitHub repository; the `origin` remote is configured on `main`.
+- [ ] Push reviewed source to `main`, verify remote commit and CI. The repository was empty before this migration; the initial push has not yet been recorded as successful.
+- [ ] Make clean install reproducible on a fresh Arch/Hyprland machine and in Linux CI. Test prerequisites: Python 3.13, uv, Node/npm, Docker, Playwright/Chromium, optional `grim`, `wtype`, `ydotool` daemon. Confirm supported CPU architectures and Docker UID mapping.
+- [ ] Define image tagging/pinning, supply-chain audit, dependency update cadence, SBOM/provenance and signed release approach. Test rollback to a previous release.
+
+### Phase 1 — security and execution foundation (partly built; release blocker)
+
+- [x] Same-origin pairing/local binding, server-side encrypted credentials, origin validation, exact approvals, scoped host file tools, independent grants, revocation, process-group stop, Docker restrictions.
+- [ ] Threat-model all boundaries: browser → app, app → companion, worker → companion, worker → model, sandbox → host/Docker daemon, browser pages → agent, downloaded artifacts → user. Decide explicitly which users and machines are trusted. Document residual risks.
+- [ ] Audit origin/CSRF/session handling, token rotation, logout, local network/proxy exposure, credential encryption/key rotation, request size/rate limits, error leakage, terminal and artifact redaction. Add security regression tests for malicious headers, malformed payloads and prompt injection.
+- [ ] Tighten sandbox network policy, egress restrictions, container image updates, read-only root filesystem where feasible, filesystem/resource quotas, disk cleanup and Docker daemon privilege assumptions. Verify no unapproved host mounts and test container escape assumptions with an expert review.
+- [ ] Concurrency/race tests: revoke grant during read/write/process launch, stop during approval/streaming, duplicate approval requests, worker restart while a command survives, parent cancellation while children run, browser takeover at run transition. Every ambiguous effect must require review.
+- [ ] Explicit policy and approval UX for elevation, messages, publishing, account changes, forms/submissions and other external writes. Tool descriptions alone are insufficient: enforce at runtime and test denial. Define URL/domain policy for browser and network tools.
+- [ ] Security review by someone independent of the implementing assistant before any public or remote deployment.
+
+### Phase 2 — providers and model experience (partly built)
+
+- [x] Named multiple connections, server-side keys, supported adapter types, discovery/manual IDs, test inference, global default, agent and run overrides, unknown capability labels.
+- [ ] Live-test all supported provider types against real endpoints when credentials/services exist. For each: valid/invalid key, timeout, empty/paginated model list, inference unavailable despite listing, quota/rate errors, streaming/tool calling/vision behavior, endpoint changes and duplicate connections. Keep each provider's protocol adapter independently testable.
+- [ ] Native Ollama installed-model discovery and tool-capable inference on an actual Ollama daemon; LM Studio and custom endpoints with different API quirks. A llama.cpp compatible-server pass does not satisfy native Ollama acceptance.
+- [ ] Catalog suggestions separate from discovered and manual IDs, with source/version/date; per-model capability evidence and unknown states. Show last successful inference test, connection health, latency, model provenance, context limits and cost only when reliably known.
+- [ ] Provider setup wizard for local server detection, base URL validation and actionable error recovery. Add API-key rotation/removal and connection removal policy while preserving historical run provenance.
+- [ ] Model routing/failover policy, budgets, token/cost accounting, rate limiting and retries that never silently duplicate effectful actions. Benchmark weak versus strong local models and clearly explain tool-capability requirements.
+
+### Phase 3 — agent engine and durable work (partly built; release blocker)
+
+- [x] SDK loop, focused tools, event streaming, bounded calls/delegation, parent authority intersection, followups, safe/uncertain restart classification, explicit review resolution.
+- [ ] Persist SDK conversation/checkpoint state in a documented format and resume safe reasoning at the correct point. Version checkpoint schema; test upgrade/restart. Do not repeat commands, submissions or external writes with unknown outcome.
+- [ ] Implement a durable run queue and worker lifecycle with startup reconciliation, heartbeats/leases, idempotency keys and terminal states. Prove tab close, backend restart, worker kill, machine reboot and partial SQLite write behaviors.
+- [ ] Per-run resource budgets: steps, wall time, tokens/cost, output bytes, artifact count/size, disk and network consumption. Enforce limits at worker **and** companion, surface remaining budget and stop reason in UI.
+- [ ] Make delegation visible as task tree: ownership, authority, progress, child logs/artifacts, failure propagation, cancellation, handoff/retry policy. Test malicious or mismatched worker profiles cannot gain parent authority.
+- [ ] Improve agent planning/verification contract: distinguish requested goal, proposed action, actual observation, verified result and final claim. Add outcome checks for code repair, research citation and browser tasks. Do not trust model self-report alone.
+- [ ] Add tool capabilities only through gated adapters. Evaluate whether SDK browser tools cover needs before bringing in browser-use/browser-use. Support real file diffs for shell-driven edits, not only file-tool previews.
+- [ ] Backup/export/import of conversations, runs and artifacts with secret scrubbing and provenance; SQLite migrations, corruption handling and retention policy. Migration/restore tests on actual older state snapshots.
+
+### Phase 4 — isolated browser and host desktop (partly built)
+
+- [x] Actual Docker browser, screenshots, read-only host share, post-task screenshot-based takeover, host `grim` capture, `wtype` keyboard, permission-specific capability reporting.
+- [ ] Browser: stronger navigation/interact/read/screenshot/download coverage; page load failures, multi-tab/popups, downloads, cookies/session isolation, anti-bot/CAPTCHA handoff, visible active-run takeover with pause/resume and conflict prevention. Define safe limits for external submissions.
+- [ ] Desktop: use actual Wayland/Hyprland consent mechanisms where available; distinguish direct compositor access from portal consent. The current session advertised Screenshot and ScreenCast portals but no RemoteDesktop portal. Implement session lifecycle/consent or document a deliberately supported alternative.
+- [ ] Install/configure a supported pointer backend (currently missing accessible `ydotoold` socket) and test pointer move/click against a disposable focused Hyprland window. Record exact compositor/backend/version, grant, approval, observed effect and revocation. Sandbox mouse evidence cannot substitute.
+- [ ] Test screen capture with a vision-capable local or hosted model and verify image bytes are sent only after explicit approval. Add visible preview, retention controls and image-size/privacy rules. Never commit desktop recordings.
+- [ ] Host shell and file UX: project-folder picker, clear account-wide shell disclosure, pre/post Git diff capture, command/cwd/exit/streamed output, undo/restore guidance for edits, permission inspection/revocation, local emergency stop always reachable.
+
+### Phase 5 — complete frontend and UX (partly built; release blocker)
+
+- [x] Core screens, guided setup, settings editors, chat/workspace split view, runs/artifacts views, diff/command previews, browser panel, responsive navigation, Markdown rendering.
+- [ ] Design system: typography, spacing, colors, iconography, component states and contrast tokens; consistent focus/hover/disabled styles. Review with real examples from comparable products and design original UI. Do not copy branding or licensed assets without permission.
+- [ ] User journeys for first-run local model, hosted model, provider errors, selecting a grant, running work, approvals, denial, cancellation, recovery review, delegation, browser takeover, artifact inspection, archival, and upgrade. Each needs deliberate empty/loading/error/success states.
+- [ ] Accessibility audit: semantic landmarks, keyboard navigation, focus trapping/return for dialogs, screen-reader announcements for streaming and approval changes, color contrast, reduced motion, zoom, 320px–desktop layouts. Run automated checks and manual keyboard/screen-reader tests.
+- [ ] Long-running work ergonomics: chronological timeline, filtering/search within events, stable autoscroll, large-output virtualization, readable terminal, diff side-by-side/inline, artifact preview for safe formats, model/provider/machine/mode badge and cost/step/status visibility.
+- [ ] Usability sessions with representative users on Arch/Hyprland and another supported Linux setup. Measure time to first task, comprehension of host shell reach, approval decisions and recovery. Resolve findings before claiming mature UX.
+- [ ] Visual regression and browser compatibility checks for desktop/mobile. Ensure tests exercise real UI behavior and the actual backend path; mocks must be labelled fixtures.
+
+### Phase 6 — operations, distribution and scaling (mostly unbuilt; release blocker)
+
+- [ ] Decide product deployment contract: (A) one trusted user on one Linux machine, (B) multiple local users, or (C) hosted multi-tenant service. The present implementation supports only A on loopback. B/C require separate auth, tenant isolation, storage/key separation and a different security design; do not call it scalable to B/C without building them.
+- [ ] Package the launcher/companion, service units and startup health checks for Arch. Ensure orderly shutdown/restart and no orphan containers/processes. Document clean uninstall and state export.
+- [ ] Schema migration/backup/restore tooling, storage quotas/cleanup, log retention, metrics, tracing without leaking secrets, health/readiness endpoints, structured incident reporting and crash diagnostics.
+- [ ] Load/soak benchmarks: concurrent runs, SSE clients, SQLite contention, Docker startup, long events, many artifacts, provider outages. State targets and pass/fail thresholds before measuring. Replace single-host components only when target scale requires it.
+- [ ] Release process: versioning, changelog, CI matrix, dependency/image vulnerability scans, signed artifacts if adopted, staging environment, canary/rollback and disaster recovery drill.
+- [ ] Documentation for users and contributors: architecture diagram, install/upgrade, provider recipes, local-model sizing, host permission explanations, security model, troubleshooting, development setup, test evidence and known limitations.
+
+### Phase 7 — final acceptance and public release (not complete)
+
+- [ ] Run all original requested scenarios through the actual UI and execution path. Hosted provider needs a real key; Ollama needs a running daemon/model; Hyprland pointer needs a usable backend; vision needs a vision-capable model. Do not mark the whole release blocked when only one live scenario lacks prerequisites.
+- [ ] Perform fresh-machine install, upgrade from prior state, backup/restore, security review, accessibility review, reliability/fault-injection suite, load test for the chosen deployment contract and owner usability walkthrough.
+- [ ] Audit public repo contents, license/notices, dependency locks and CI; publish under the owner's account; verify clone/build/run from the public URL. Only then change release status to production-ready for the **explicitly defined** deployment contract.
+
+## Original requested acceptance matrix
+
+| Scenario | Current status | Exact remaining proof |
+| --- | --- | --- |
+| Local model discover → select → infer → tool | **Live pass** with llama.cpp compatible endpoint; not native Ollama | Run native Ollama installation/discovery/tool-call test. |
+| Hosted provider discover → switch → run connection identified | **Blocked live** by missing hosted credentials; adapters have fixtures | Real hosted account/credential and browser test with two connections. Never publish the key. |
+| Sandbox browse page → real file → UI download | **Live pass** with real local model, Docker Chromium and controlled page | Expand to external-site variability and lifecycle/failure cases. |
+| Host temporary Git repo failing test → approved diff → passing retest | **Live pass** with Qwen3-1.7B; 0.6B failed | Repeat across supported systems/models, shell-driven diffs and failure cases. |
+| Deny/revoke/stop | **Fixture/UI and unit pass**; stop/revocation reached real processes in controlled tests | Race and crash tests, independently reviewed threat model. |
+| Delegate, close/reopen tab, both histories/artifact | **Fixture/UI pass** | Longer real-model delegation and restart/failure matrix. |
+| Host screen and input on actual Hyprland | `grim` capture and `wtype` keyboard **live pass**; pointer **unverified** | Pointer backend installation and real controlled pointer test; portal consent integration. |
+| Full public product | **Not complete** | All release gates, public repository and clean clone/install verification. |
+
+Detailed commands, dates, hashes, and observed results live in `docs/ACCEPTANCE.md`. Update that ledger when new evidence changes a row; retain failed results that explain limitations.
+
+## Reference projects and reuse rules
+
+Local reference clones are available at `/home/megabytis/Github/Agent-repos`: OpenHands, software-agent-sdk, agent-zero, browser-use, goose, hermes-agent, open-webui, openclaw, openfuse, and xiryn. Inspect their checked-out revisions and licenses before reuse. Review projects selectively for concrete needs. Existing pinned review and licenses: `docs/UPSTREAM-REVIEW.md`. OpenHands SDK source/examples/TypeScript client review: `docs/ARCHITECTURE.md`. No upstream application source was copied so far. Candidate references requested by the owner: OpenHands/OpenHands (runtime/browser integration); agent0ai/agent-zero, open-webui/open-webui and aaif-goose/goose (provider/model setup); openclaw/openclaw (pairing/device permissions); NousResearch/hermes-agent and clawboo/clawboo (profiles/delegation); SouravBeraAkaSpeed/xiryn and CopilotKit/openfuse (visible sandbox/approvals/background runs); browser-use/browser-use if a concrete SDK browser gap is identified. Fetch files/revisions when needed. Inspect the **specific file's** license and required notices before copying anything; record source path, revision and adapted code in the decision record. Prefer documented released packages. Preserve an original interface.
+
+## Contributor log
+
+Append entries in this format: `Date | Contributor and tool/model | Scope and files | Verification actually run | Remaining issue / next owner`. Distinguish direct observation from inherited evidence. Do not edit previous lines to inflate completion.
+
+| Date | Contributor | Built / changed | Evidence | Remaining |
+| --- | --- | --- | --- | --- |
+| 2026-11-19–20 | OpenAI Codex (GPT-6 family), under owner direction | Initial repo foundation; SDK integration; provider adapters; encrypted state; FastAPI app/companion; grants, approvals, host and sandbox tools; Docker browser; profiles/delegation; events/recovery; React UI and overhaul; Arch docs, CI and tests. See file inventory and Git history once committed. | Last recorded: 34 Python tests, 4 fixture browser tests; live llama.cpp local model and host Git repair; live Docker browser/share/cleanup; Hyprland `grim`/`wtype`. Full details in `docs/ACCEPTANCE.md`. | Production security/reliability/UX/operations gates and public GitHub repo. |
+| 2026-11-20 | OpenAI Codex (GPT-6-sol), under owner direction | Created this `PLANNING.md` handoff with current inventory, status boundaries, phased backlog, release gates and contributor protocol. | Compared plan against existing source, README, acceptance and architecture records; documentation-only change. | Next contributor should take Phase 0/1 release blockers, implement and verify, then update both ledgers. |
+| 2026-11-20 | OpenAI Codex (GPT-6-sol), under owner direction | Hardened `workbench/server.py` restart recovery: safe requeue requires companion-confirmed tool cleanup; missing grant or cleanup failure goes to review. Added `tests/test_recovery.py` regression. | Focused recovery tests: 6 passed. Full Python suite: 35 passed, 2 dependency warnings; command and observed result in `docs/ACCEPTANCE.md`. | Full SDK checkpoint/reboot recovery and remaining production release gates. |
+| 2026-11-20 | OpenAI Codex (GPT-6-sol), under owner direction | Capped terminal event and observation output to 200,000 characters per command in `workbench/companion.py`, with explicit truncation marker and preserved exit status; added real noisy-subprocess regression in `tests/test_permissions.py`. | Focused permissions tests: 9 passed; full Python suite: 36 passed, 2 dependency warnings; updated local service returned HTTP 200. | Aggregate run/disk quotas and other production reliability gates remain. |
+| 2026-11-20 | Antigravity (Gemini 3.8 Flash), under owner direction | Implemented companion-level task budget enforcement, per-run aggregate terminal output quota (500k chars), artifact count (20) & storage quotas (5MB file / 20MB run) in companion, request body size limit (10MB HTTP 413), `/api/logout`, `/api/rotate-token` with dynamic token propagation in `workbench/store.py`, `companion.py`, `server.py`, `client.py`, and remaining tool budget display in `web/Workspace.tsx`. Added `tests/test_quotas.py` (4 tests) and `tests/test_security.py` (4 tests). | Full Python suite: 44 passed, 3 warnings; `npm run build` passed; all 4 Playwright UI tests passed in 1.2m; restarted local service verified HTTP 200 on 8765. | Concurrency/race condition tests, threat modeling doc, repository files (LICENSE/SECURITY.md), and full SDK conversation checkpointing. |
+
+| 2026-11-20 | OpenAI Codex (GPT-6.1-sol), under owner direction | Migrated source and ignored private state to `/home/megabytis/Github/personal/desk-yantra`, preserving the owner-created repository and main branch; renamed public product/package metadata to Desk Yantra; rebuilt dependencies from lockfiles; relocated 58 private state paths with a database backup and zero missing artifacts. | Locked Python install and npm ci passed; frontend build passed; 44 Python tests passed with 3 dependency warnings. Browser result and publication evidence are recorded in docs/ACCEPTANCE.md. | Production release gates remain open. Local upstream clones are available for continued development. |
+
+**Rule for future agents:** The owner's objective stays production-grade completion even if a session ends. Implement a real, tested slice; update this file and `docs/ACCEPTANCE.md`; leave the next session a precise unfinished-task handoff. Do not call the product complete because a build or a scripted fixture passes.

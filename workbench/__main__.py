@@ -1,0 +1,49 @@
+import argparse
+import os
+import signal
+import subprocess
+import sys
+
+from . import store
+from .store import all_objects, put
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("command", choices=["serve", "stop"], default="serve", nargs="?")
+    args = parser.parse_args()
+    if args.command == "stop":
+        from .client import companion
+        for run in all_objects("runs"):
+            if run["status"] in ("running", "queued", "paused", "review"):
+                run["status"] = "stopped"
+                put("runs", run)
+                from .server import kill_worker
+                try:
+                    companion("/stop/" + run["id"], {},timeout=5)
+                except Exception:
+                    from .companion import recover_commands
+                    recover_commands()
+                    print('Companion unavailable; terminated recorded process groups where identity could be confirmed. Review interrupted external effects.')
+                finally:
+                    kill_worker(run["id"])
+        print("Local stop requested for all active runs")
+        return
+    os.environ.setdefault("LITELLM_LOCAL_MODEL_COST_MAP", "True")
+    print("Workbench: http://127.0.0.1:8765", flush=True)
+    print("Browser pairing token: " + store.TOKEN, flush=True)
+    companion = subprocess.Popen([sys.executable, "-m", "uvicorn", "workbench.companion:app", "--host", "127.0.0.1", "--port", "8766", "--no-access-log"])
+    server = subprocess.Popen([sys.executable, "-m", "uvicorn", "workbench.server:app", "--host", "127.0.0.1", "--port", "8765", "--no-access-log"])
+    try:
+        server.wait()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        server.terminate()
+        companion.terminate()
+        server.wait()
+        companion.wait()
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,21 @@
+name: fixture-tests
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: uv sync --locked
+      - run: npm ci && npm run build
+      - run: PAW_STATE=/tmp/paw-unit LITELLM_LOCAL_MODEL_COST_MAP=True uv run pytest -q
+      - run: npx playwright install --with-deps chromium
+      - run: uv run python tests/browser_probe.py
+      - run: |
+          uv run python -m workbench > /tmp/paw-app.log 2>&1 &
+          uv run python tests/fixture_server.py > /tmp/paw-fixture.log 2>&1 &
+          for attempt in $(seq 1 30); do curl -fsS http://127.0.0.1:8765/ && break || sleep 1; done
+          npx playwright test
