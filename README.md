@@ -65,10 +65,11 @@ Stop Desk Yantra and finish or stop active runs before making a backup. Use a de
 
 ```sh
 PAW_STATE=$HOME/.local/state/desk-yantra uv run python -m workbench backup /path/to/private-backup
+uv run python -m workbench verify-backup /path/to/private-backup
 PAW_STATE=/path/to/fresh-state uv run python -m workbench restore /path/to/private-backup
 ```
 
-The backup contains the pairing token, encryption key, SQLite snapshot, events and referenced artifacts. Treat it like a password vault: keep it private, encrypted by your storage system, and never publish it. Restore verifies SHA-256 checksums and SQLite integrity, rejects an existing destination, and updates artifact paths to the new state directory. The app and companion must be stopped for both commands. Review restored workspace grants and rotate the pairing token before using a copy on another machine. This is a private state backup, not a scrubbed export. A release upgrade/rollback procedure remains untested.
+The backup contains the pairing token, encryption key, SQLite snapshot, events and referenced artifacts. Treat it like a password vault: keep it private, encrypted by your storage system, and never publish it. `verify-backup` reads and checks an archive without restoring it; restore runs the same checks, rejects an existing destination, and updates artifact paths to the new state directory. The app and companion must be stopped for backup and restore. Review restored workspace grants and rotate the pairing token before using a copy on another machine. The SHA-256 manifest detects accidental changes; it does not authenticate an archive against someone who can edit both files and manifest. This is a private state backup, not a scrubbed export. A release upgrade/rollback procedure remains untested.
 
 ## Development and tests
 

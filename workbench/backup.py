@@ -19,7 +19,10 @@ ACTIVE = {"queued", "running", "approval", "paused"}
 
 
 def _private_file(path):
-    info = path.lstat()
+    try:
+        info = path.lstat()
+    except FileNotFoundError as error:
+        raise ValueError(f"Backup file is missing: {path.name}") from error
     if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
         raise ValueError(f"Expected a private regular file: {path.name}")
     return path
@@ -96,8 +99,47 @@ def create_backup(source, destination):
         manifest = {"format": FORMAT, "files": {name: _digest(stage / name) for name in names}, "artifact_count": len(artifacts)}
         (stage / "manifest.json").write_text(json.dumps(manifest, sort_keys=True, indent=2) + "\n")
         (stage / "manifest.json").chmod(0o600)
+        verify_backup(stage)
         os.rename(stage, destination)
     original.close()
+    return manifest
+
+
+def verify_backup(source):
+    """Check the complete private archive without writing or restoring it."""
+    source = Path(source).absolute()
+    if source.is_symlink() or not source.is_dir() or (source / "artifacts").is_symlink():
+        raise ValueError("Invalid backup directory")
+    manifest_path = _private_file(source / "manifest.json")
+    manifest = json.loads(manifest_path.read_text())
+    if manifest.get("format") != FORMAT or not isinstance(manifest.get("files"), dict):
+        raise ValueError("Unsupported backup format")
+    names = manifest["files"]
+    if not {"token", "encryption.key", "workbench.db"}.issubset(names):
+        raise ValueError("Backup is incomplete")
+    present = {path.relative_to(source).as_posix() for path in source.rglob("*") if path.is_file() or path.is_symlink()}
+    if present != set(names) | {"manifest.json"}:
+        raise ValueError("Backup contains missing or unlisted files")
+    for name, digest in names.items():
+        path = source / name
+        if name not in ("token", "encryption.key", "workbench.db") and (not name.startswith("artifacts/") or Path(name).parts != ("artifacts", Path(name).name)):
+            raise ValueError("Unsafe backup path")
+        if not isinstance(digest, str) or len(digest) != 64 or _digest(_private_file(path)) != digest:
+            raise ValueError("Backup checksum mismatch")
+    try:
+        db = sqlite3.connect(f"file:{source / 'workbench.db'}?mode=ro&immutable=1", uri=True)
+        try:
+            _validate_db(db)
+            artifacts = _objects(db, "artifacts")
+        finally:
+            db.close()
+    except sqlite3.DatabaseError as error:
+        raise ValueError("Backup SQLite database is invalid") from error
+    if len(artifacts) != manifest.get("artifact_count"):
+        raise ValueError("Artifact count mismatch")
+    expected = [f"artifacts/{Path(item['path']).name}" for item in artifacts]
+    if len(expected) != len(set(expected)) or set(expected) != set(names) - {"token", "encryption.key", "workbench.db"}:
+        raise ValueError("Artifact records do not match backup files")
     return manifest
 
 
@@ -106,21 +148,10 @@ def restore_backup(source, destination):
     source, destination = Path(source).absolute(), Path(destination).absolute()
     if destination.exists() or destination.is_symlink():
         raise ValueError("Restore destination already exists")
-    if source.is_symlink() or not source.is_dir() or destination.is_relative_to(source):
-        raise ValueError("Invalid backup or restore destination")
-    manifest_path = _private_file(source / "manifest.json")
-    manifest = json.loads(manifest_path.read_text())
-    if manifest.get("format") != FORMAT or not isinstance(manifest.get("files"), dict):
-        raise ValueError("Unsupported backup format")
+    if destination.is_relative_to(source):
+        raise ValueError("Restore destination must be outside the backup")
+    manifest = verify_backup(source)
     names = manifest["files"]
-    if not {"token", "encryption.key", "workbench.db"}.issubset(names):
-        raise ValueError("Backup is incomplete")
-    for name, digest in names.items():
-        path = source / name
-        if name not in ("token", "encryption.key", "workbench.db") and (not name.startswith("artifacts/") or Path(name).parts != ("artifacts", Path(name).name)):
-            raise ValueError("Unsafe backup path")
-        if not isinstance(digest, str) or len(digest) != 64 or _digest(_private_file(path)) != digest:
-            raise ValueError("Backup checksum mismatch")
     with tempfile.TemporaryDirectory(prefix=".desk-yantra-restore-", dir=destination.parent) as temporary:
         stage = Path(temporary)
         stage.chmod(0o700)
