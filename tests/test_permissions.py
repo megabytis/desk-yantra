@@ -222,3 +222,32 @@ def test_revoke_kills_running_shell_before_late_effect(tmp_path):
     assert not worker.is_alive()
     assert process.poll() is not None
     assert not (tmp_path / "late-effect.txt").exists()
+
+
+def test_concurrent_duplicate_approval_executes_once(tmp_path, monkeypatch):
+    """Two requests racing on one approval cannot both perform the action."""
+    grant, run = setup_run(tmp_path)
+    action = authorize(run, {"op": "write", "path": "once.txt", "content": "one execution"})
+    barrier = threading.Barrier(2)
+    original = companion.claim_approval
+
+    def simultaneous_claim(*args):
+        barrier.wait(timeout=10)
+        return original(*args)
+
+    monkeypatch.setattr(companion, "claim_approval", simultaneous_claim)
+    responses = []
+
+    def attempt():
+        client = TestClient(companion.app, headers={"Authorization": "Bearer " + TOKEN})
+        responses.append(client.post("/execute/" + run["id"], json=action.copy()).status_code)
+
+    workers = [threading.Thread(target=attempt) for _ in range(2)]
+    for worker in workers:
+        worker.start()
+    for worker in workers:
+        worker.join(10)
+    assert all(not worker.is_alive() for worker in workers)
+    assert sorted(responses) == [200, 403]
+    assert (tmp_path / "once.txt").read_text() == "one execution"
+    assert len([item for item in events(run["id"]) if item["kind"] == "action_started"]) == 1

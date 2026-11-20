@@ -121,3 +121,7 @@ Contributor: **OpenAI Codex (GPT-6-sol)**. Added deterministic test pausing a sh
 ## Running shell revocation — 2026-11-20
 
 Contributor: **OpenAI Codex (GPT-6-sol)**. A real companion-approved shell command began `sleep 3; touch late-effect.txt`; grant revocation over companion HTTP terminated the process before the delayed file appeared. `PAW_STATE=/tmp/desk-yantra-active-revoke-full LITELLM_LOCAL_MODEL_COST_MAP=True .venv/bin/python -m pytest -q --tb=short`: **48 passed, 3 warnings in 7.05s**. The first focused assertion inspected a process entry removed during cleanup and was corrected to retain the process handle; no runtime change was needed. GitHub Actions run 44708949753 for commit 7737305 completed successfully; run 44709168423 was in progress when checked.
+
+## Concurrent duplicate approval — 2026-11-20
+
+Contributor: **OpenAI Codex (GPT-6-sol)**. Two companion HTTP requests were synchronized immediately before claiming the same exact approval. Observed one HTTP 200, one HTTP 403, one file effect and one `action_started` event. `PAW_STATE=/tmp/desk-yantra-duplicate-full LITELLM_LOCAL_MODEL_COST_MAP=True .venv/bin/python -m pytest -q --tb=short`: **49 passed, 3 warnings in 7.10s**. This tests a controlled same-process contention; crash/restart and multi-process contention remain unverified. CI for prior commit 516c1bb completed successfully; 01fbd50 run was in progress when checked.
