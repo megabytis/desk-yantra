@@ -4,14 +4,26 @@ import signal
 import subprocess
 import sys
 
-from . import store
-from .store import all_objects, put
-
-
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("command", choices=["serve", "stop"], default="serve", nargs="?")
+    parser.add_argument("command", choices=["serve", "stop", "backup", "restore"], default="serve", nargs="?")
+    parser.add_argument("path", nargs="?", help="Private backup directory or fresh restore state directory")
     args = parser.parse_args()
+    if args.command in ("backup", "restore"):
+        if not args.path:
+            parser.error("backup and restore require a destination path")
+        from pathlib import Path
+        from .backup import create_backup, restore_backup
+        state = Path(os.environ.get("PAW_STATE", ".state")).absolute()
+        if args.command == "backup":
+            result = create_backup(state, args.path)
+            print(f"Private backup created: {args.path} ({result['artifact_count']} artifacts)")
+        else:
+            result = restore_backup(args.path, state)
+            print(f"Private state restored: {state} ({result['artifact_count']} artifacts)")
+        return
+    from . import store
+    from .store import all_objects, put
     if args.command == "stop":
         from .client import companion
         for run in all_objects("runs"):

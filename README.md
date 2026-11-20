@@ -59,6 +59,17 @@ Interrupted, stopped, and failed runs show a review form. Record the observed ou
 
 The companion checks the current grant at execution time. All operations except scoped reads need an atomically consumed one-use approval. File tools reject traversal, symlinks, hard links, special files and private app state. Revocation stops matching active runs. Tools are limited to 30 calls per worker, 90 across the task tree, and delegation to two levels; children inherit the intersection of parent and profile tools and must have the same workspace grant. Up to 30 iterations are allowed per SDK run.
 
+## Private backup and restore
+
+Stop Desk Yantra and finish or stop active runs before making a backup. Use a destination outside `PAW_STATE` that does not already exist:
+
+```sh
+PAW_STATE=$HOME/.local/state/desk-yantra uv run python -m workbench backup /path/to/private-backup
+PAW_STATE=/path/to/fresh-state uv run python -m workbench restore /path/to/private-backup
+```
+
+The backup contains the pairing token, encryption key, SQLite snapshot, events and referenced artifacts. Treat it like a password vault: keep it private, encrypted by your storage system, and never publish it. Restore verifies SHA-256 checksums and SQLite integrity, rejects an existing destination, and updates artifact paths to the new state directory. The app and companion must be stopped for both commands. Review restored workspace grants and rotate the pairing token before using a copy on another machine. This is a private state backup, not a scrubbed export. A release upgrade/rollback procedure remains untested.
+
 ## Development and tests
 
 ```sh
