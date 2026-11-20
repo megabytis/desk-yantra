@@ -232,7 +232,7 @@ def revoke(ident: str):
     except Exception:
         pass
     for run in all_objects("runs"):
-        if run["grant"] == ident and run["status"] in ("running", "queued", "paused"):
+        if run.get("grant") == ident and run.get("status") in ("running", "queued", "approval", "paused", "review"):
             stop(run["id"])
     return grant
 
@@ -370,26 +370,28 @@ def resolve_review(ident:str,body:dict):
 
 @app.post("/api/runs/{ident}/stop")
 def stop(ident: str):
-    run = get("runs", ident)
-    run["status"] = "stopped"
-    put("runs", run)
+    run = transition_run(ident, ("queued", "running", "approval", "paused", "review"), "stopped")
+    if run is None:
+        return get("runs", ident)
+    for approval in all_objects("approvals"):
+        if approval.get("run") == ident and approval.get("status") in ("pending", "approved"):
+            approval["status"] = "cancelled"
+            put("approvals", approval)
     for child in all_objects("runs"):
-        if child.get("parent") == ident and child["status"] not in ("completed", "failed", "stopped"):
+        if child.get("parent") == ident and child.get("status") in ("queued", "running", "approval", "paused", "review"):
             stop(child["id"])
     try:
-        companion("/stop/" + ident, {})
+        confirmed = companion("/stop/" + ident, {}).get("stopped") is True
+        if not confirmed:
+            raise ValueError("Companion did not confirm cleanup")
     except Exception:
-        run["status"] = "review"
-        put("runs", run)
-        event(ident, "stop_incomplete", "Worker stop requested; companion unavailable. Running tool termination could not be confirmed. Use the local stop control after restoring the companion.")
+        transition_run(ident, ("stopped",), "review")
+        event(ident, "stop_incomplete", "Worker stop requested; companion could not confirm tool cleanup. Review interrupted effects and restore the companion.")
     finally:
-        process = WORKERS.get(ident)
-        if process and process.poll() is None:
-            os.killpg(process.pid, signal.SIGTERM)
-        else:
-            kill_worker(ident)
-    event(ident, "stopped", {"status": run["status"], "worker": "cancellation requested"})
-    return run
+        kill_worker(ident)
+    current = get("runs", ident)
+    event(ident, "stopped", {"status": current["status"], "worker": "cancellation requested"})
+    return current
 
 
 @app.post("/api/runs/{ident}/browser-control")
