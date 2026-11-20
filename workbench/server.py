@@ -17,6 +17,7 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from .providers import DEFAULTS, adapter, public
+from .catalog import get_catalog, find_catalog_model
 from .client import companion
 from . import store
 from .store import STATE, CIPHER, all_objects, event, events, get, put, redact, transition_run, rotate_token, artifact_path
@@ -143,7 +144,7 @@ def state():
         capabilities = companion("/capabilities")
     except Exception:
         capabilities = {"error": "Companion unavailable; start both services"}
-    return redact({"providers": [public(item) for item in all_objects("providers")], "agents": all_objects("agents"), "runs": all_objects("runs"), "grants": all_objects("grants"), "approvals": all_objects("approvals"), "artifacts": [{name: value for name, value in item.items() if name != "path"} for item in all_objects("artifacts")], "budgets": all_objects("budgets"), "defaults": all_objects("settings"), "provider_types": DEFAULTS, "capabilities": capabilities})
+    return redact({"providers": [public(item) for item in all_objects("providers")], "agents": all_objects("agents"), "runs": all_objects("runs"), "grants": all_objects("grants"), "approvals": all_objects("approvals"), "artifacts": [{name: value for name, value in item.items() if name != "path"} for item in all_objects("artifacts")], "budgets": all_objects("budgets"), "defaults": all_objects("settings"), "provider_types": DEFAULTS, "capabilities": capabilities, "catalog": get_catalog()})
 
 
 @app.post("/api/providers")
@@ -168,7 +169,7 @@ def record_provider_check(original, field, result, models=None):
             raise ValueError("Connection changed during the check; run it again")
         current[field] = result
         if models is not None:
-            current["models"] = models + [item for item in current["models"] if item["source"] == "manual" and item["id"] not in {model["id"] for model in models}]
+            current["models"] = models + [item for item in current["models"] if item.get("source") in ("manual", "catalog") and item["id"] not in {model["id"] for model in models}]
         put("providers", current)
 
 
@@ -191,6 +192,27 @@ def manual(ident: str, body: dict):
     provider = get("providers", ident)
     provider["models"].append({"id": body["model"], "source": "manual", "tools": None, "vision": None, "streaming": None})
     return public(put("providers", provider))
+
+
+@app.post("/api/providers/{ident}/catalog-add")
+def add_catalog_model(ident: str, body: dict):
+    provider = get("providers", ident)
+    model_id = str(body.get("model", "")).strip()
+    if not model_id:
+        raise ValueError("Model ID required")
+    catalog_entry = find_catalog_model(provider["type"], model_id)
+    entry = catalog_entry.copy() if catalog_entry else {
+        "id": model_id,
+        "source": "catalog",
+        "tools": None,
+        "vision": None,
+        "streaming": None
+    }
+    existing_ids = {m["id"] for m in provider.get("models", [])}
+    if model_id not in existing_ids:
+        provider.setdefault("models", []).append(entry)
+        put("providers", provider)
+    return public(provider)
 
 
 @app.post("/api/providers/{ident}/test")

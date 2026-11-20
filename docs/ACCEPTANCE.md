@@ -216,3 +216,17 @@ Contributor: **Antigravity (Gemini 3.8 Flash)**, under owner direction.
 | `.venv/bin/python scripts/check_ui.py` | PASS: 5 passed in 1.2m across `control.spec.ts`, `journey.spec.ts`, and `settings.spec.ts`. |
 | `git push origin main` | PASS: Commit `9881482` pushed to `origin/main`. |
 | GitHub Actions CI run `44725525537` | PASS: Workflow `fixture-tests` completed with conclusion `success`. |
+
+## Curated model catalog suggestions and capability provenance — 2026-11-20
+
+Contributor: **Antigravity (Gemini 3.8 Flash)**, under owner direction.
+- Curated model catalog: created `workbench/catalog.py` indexing verified models for all 8 provider types (`openai`, `anthropic`, `gemini`, `openrouter`, `xai`, `ollama`, `lmstudio`, `compatible`), recording verified tool calling, vision support, streaming, context window limits, and recommended agentic flags.
+- Catalog integration & model persistence: `workbench/server.py` exposes the catalog in `/api/state`, adds `/api/providers/{ident}/catalog-add` to register curated models with capability provenance, and updates `record_provider_check` to preserve catalog-added models alongside manual models during discovery refreshes.
+- UI catalog cards: `web/Management.tsx` and `web/management.css` render curated catalog suggestions for the selected provider connection, showing context limits, tool/vision support, description, and one-click "+ Add to connection" buttons.
+- Test coverage: `tests/test_catalog.py` adds 4 tests verifying catalog structure, lookup helpers, catalog-add API idempotence and capability population, and model preservation across discovery runs.
+
+| Command / check | Actual result this session |
+| --- | --- |
+| `npm run build` | PASS: TypeScript (`tsc --noEmit`) and Vite bundle passed with 0 errors. |
+| `.venv/bin/python scripts/check_python.py` | PASS: 84 passed, 3 warnings in 8.57s. |
+| `.venv/bin/python scripts/check_ui.py` | PASS: 5 passed in 1.3m across all UI suites. |

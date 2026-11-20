@@ -6,3 +6,15 @@
 .connection-check{border:1px solid #3c5945;background:#1d2c22;border-radius:8px;padding:15px 18px;margin-bottom:20px;font-size:12px}.connection-check strong{display:block;color:#bcdcc6}.connection-check span{display:block;color:#92a99a;font-size:10px;margin-top:6px}.connection-check p{font-size:11px;margin-bottom:0}.connection-check.check-failed{border-color:#6c454e;background:#34242a}.connection-check.check-failed strong{color:#edbdc7}
 .desktop-capability-strip{display:flex;flex-wrap:wrap;gap:20px;padding:16px 0 24px;font-size:11px;color:#97a8a0}.desktop-capability-strip strong{font-weight:500;color:#d0dfd5}
 .archive-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:22px;flex-wrap:wrap}.archive-toolbar label{display:flex;align-items:center;gap:8px;margin:0;font-size:12px}.archive-toolbar input{width:auto}.archive-toolbar small{font-size:11px;color:var(--muted)}.profile-footer{flex-wrap:wrap}.profile-card h2 .subtle-tag,.connection-card h3 .subtle-tag{margin-left:8px;font-size:9px;vertical-align:middle}
+.catalog-suggestions{margin-top:20px;border-top:1px solid var(--line);padding-top:16px}
+.catalog-suggestions summary{font-weight:500;font-size:13px;color:#c0eed1;cursor:pointer;margin-bottom:14px}
+.catalog-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-top:12px}
+.catalog-card{background:#171c22;border:1px solid #333d49;border-radius:8px;padding:16px;display:flex;flex-direction:column;justify-content:space-between}
+.catalog-card-header{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.catalog-card-header strong{font-size:13px;color:#e8edf3}
+.catalog-id code{font-size:10px;color:#9bb0c4;background:#10141a;padding:2px 6px;border-radius:4px}
+.catalog-desc{font-size:11px;color:#94a3b3;margin:8px 0 12px;line-height:1.6}
+.catalog-meta{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:14px}
+.catalog-add-btn{font-size:11px;padding:6px 12px;background:#243229!important;border:1px solid #3d5845!important;color:#bde3cb!important;border-radius:5px;align-self:flex-start}
+.catalog-add-btn:hover{background:#2c4033!important}
+.catalog-add-btn:disabled{opacity:.5;cursor:default}
