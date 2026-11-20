@@ -194,9 +194,10 @@ def check(run, action):
     manual_browser=current["status"]=="paused" and action.get("manual") is True and action["op"]=="browser"
     if (current["status"] != "running" and not manual_browser) or run["id"] in STOPPED:
         raise ValueError("Run stopped or requires recovery review")
-    grant = get("grants", run["grant"])
+    grant = get("grants", run.get("grant") or current.get("grant"))
     capability = {"list":"files","read": "files", "write": "files", "shell": "shell", "screen": "screen", "input": "input", "browser": "browser"}[action["op"]]
-    if grant.get("revoked") or capability not in grant["capabilities"] or capability not in run["tools"]:
+    tools = run.get("tools") or current.get("tools", [])
+    if grant.get("revoked") or capability not in grant["capabilities"] or capability not in tools:
         raise ValueError("Permission revoked or capability not granted")
     root_run = run.get("root_run", run["id"])
     budget = get_budget(root_run)
@@ -204,6 +205,13 @@ def check(run, action):
         raise ValueError("Task-wide tool budget exhausted")
     if action["op"] == "write":
         check_artifact_quota(run["id"], len(action.get("content", "")))
+    if action["op"] == "browser":
+        from .browser_policy import validate_browser_url
+        url = action.get("url", "")
+        if url:
+            ok, reason = validate_browser_url(url, grant.get("allowed_domains"))
+            if not ok:
+                raise ValueError(f"Browser navigation blocked by policy: {reason}")
     return grant
 
 
@@ -216,6 +224,55 @@ def terminate(run_id):
                 os.killpg(process.pid, signal.SIGKILL)
             except ProcessLookupError:
                 pass
+
+
+def capture_git_diff(cwd):
+    """Capture git status and diff for shell commands running in a git repo."""
+    try:
+        check_repo = subprocess.run(
+            ["git", "-C", str(cwd), "rev-parse", "--is-inside-work-tree"],
+            capture_output=True,
+            text=True,
+            timeout=3,
+        )
+        if check_repo.returncode != 0 or check_repo.stdout.strip() != "true":
+            return None
+
+        status = subprocess.run(
+            ["git", "-C", str(cwd), "status", "--porcelain"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if not status.stdout.strip():
+            return None
+
+        diff_unstaged = subprocess.run(
+            ["git", "-C", str(cwd), "diff"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        diff_staged = subprocess.run(
+            ["git", "-C", str(cwd), "diff", "--cached"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        full_diff = (diff_unstaged.stdout + "\n" + diff_staged.stdout).strip()
+        lines = [line.strip() for line in status.stdout.splitlines() if line.strip()]
+        modified_files = [line.split(maxsplit=1)[-1] for line in lines]
+
+        if len(full_diff) > 50_000:
+            full_diff = full_diff[:50_000] + "\n[Diff truncated after 50,000 characters]"
+
+        return {
+            "diff": full_diff,
+            "modified_files": modified_files,
+            "status_summary": lines[:20],
+        }
+    except Exception:
+        return None
 
 
 def command(run, argv, cwd, action=None):
@@ -279,7 +336,12 @@ def command(run, argv, cwd, action=None):
             event(run["id"], "terminal", {"output": "\n[Aggregate run output quota (500000 characters) reached; further output suppressed.]\n"})
         elif truncated:
             event(run["id"], "terminal", {"output": "\n[Output truncated after 200000 characters; command continued to completion.]\n"})
-        return {"output": "".join(chunks), "output_truncated": truncated, "exit_status": process.wait(), "cwd": str(cwd), "command": argv}
+        res = {"output": "".join(chunks), "output_truncated": truncated, "exit_status": process.wait(), "cwd": str(cwd), "command": argv}
+        if action and action.get("op") == "shell":
+            git_info = capture_git_diff(cwd)
+            if git_info:
+                res.update(git_info)
+        return res
     finally:
         timer.cancel()
         try:

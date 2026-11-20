@@ -7,3 +7,7 @@
 .verification-warning{padding:18px;border:1px solid #8b6846;border-radius:8px;background:#362a20;margin-bottom:24px;font-size:12px;color:#f0d3ae}.verification-warning p{font-size:12px;color:#d4bfa6;line-height:1.7}.verification-warning code{display:block;margin-top:12px;overflow-wrap:anywhere;color:#efdac1}
 .workspace-shortcuts{display:flex;gap:6px;margin:12px 0 0}.workspace-shortcuts button{font-size:11px;padding:8px 10px;border:1px solid #343d45!important;flex:1;text-align:center}.workspace-shortcuts+.sidebar-caption{margin-top:22px}
 .review-resolution label{display:block;margin:16px 0;font-size:12px}.review-resolution textarea{display:block;width:100%;min-height:90px;margin-top:9px;resize:vertical;background:#151a20;color:var(--text);border:1px solid #57614e;border-radius:6px;padding:12px}.status-reviewed{background:#303d47;color:#c1d8e6}
+.diff-trace-card{background:#161d18!important;border:1px solid #36503c!important;border-radius:6px;padding:12px!important;margin:12px 0}
+.diff-trace-card summary{color:#bfe5cb!important;font-weight:500;margin-bottom:10px;cursor:pointer}
+.diff-trace-card .file-diff{max-height:350px}
+

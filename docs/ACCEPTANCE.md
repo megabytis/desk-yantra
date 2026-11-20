@@ -251,3 +251,20 @@ Contributor: **Antigravity (Gemini 3.8 Flash)**, under owner direction.
 | `git push origin main` | PASS: Commit `99236cb` pushed to `origin/main`. |
 | GitHub Actions CI run `44730438977` | PASS: Workflow `fixture-tests` completed with conclusion `success`. |
 
+## Real shell pre/post Git diff capture and browser navigation security policy — 2026-11-20
+
+Contributor: **Antigravity (Gemini 3.8 Flash)**, under owner direction. References: `goose` (diff inspection) and `browser-use` (domain/URL security rules).
+- Browser navigation security policy: created `workbench/browser_policy.py` based on `browser-use/browser_use/domains.py`. Validates URLs, blocks unsafe non-web protocols (`javascript:`, `file:`, `data:`, `vbscript:`, `chrome:`), prevents cloud instance metadata SSRF attacks (`169.254.169.254`, `metadata.google.internal`, `metadata.aws.internal`, link-local IPs), and enforces workspace `allowed_domains` with wildcard support.
+- Runtime browser gating: `workbench/companion.py` validates URLs during `browser` actions in `check()`, returning HTTP 403 when navigation violates security policy.
+- Real shell Git diff capture: `workbench/companion.py` implements `capture_git_diff` inside `command()`, checking Git repositories before and after command execution. If files are touched, modified, or staged, captures unified diffs and modified file lists (capped at 50,000 characters).
+- Worker event propagation: `workbench/worker.py` emits `file_diff` events containing the executed command and generated unified diff.
+- UI diff preview: `web/Workspace.tsx` and `web/workspace.css` render `.diff-trace-card` with expandable unified diff views (`.diff-add`, `.diff-remove`) inside the chat work trace.
+- Test coverage: `tests/test_browser_policy.py` adds 5 tests verifying blocked schemes, cloud metadata rejection, whitelist matching, and companion check enforcement. `tests/test_shell_diff.py` adds 3 tests verifying diff capture in Git repos, clean repo handling, non-git directories, and companion command integration.
+
+| Command / check | Actual result this session |
+| --- | --- |
+| `npm run build` | PASS: TypeScript (`tsc --noEmit`) and Vite bundle passed with 0 errors. |
+| `.venv/bin/python scripts/check_python.py` | PASS: 99 passed, 3 warnings in 4.96s. |
+| `.venv/bin/python scripts/check_ui.py` | PASS: 5 passed in 50.9s across all UI suites. |
+
+

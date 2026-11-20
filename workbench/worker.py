@@ -114,6 +114,8 @@ class WorkExecutor(ToolExecutor):
                 result = companion("/execute/" + self.run_id, payload)["result"]
                 if action.op=='shell' and isinstance(result,dict):
                     event(self.run_id,'command_result',{'command':action.command,'exit_status':result.get('exit_status'),'cwd':result.get('cwd')})
+                    if result.get('diff'):
+                        event(self.run_id,'file_diff',{'command':action.command,'diff':result['diff'],'files':result.get('modified_files',[])})
             event(self.run_id, "tool_result", result)
             if action.op == "delegate" and isinstance(result, dict) and result.get("status") != "completed":
                 event(self.run_id, "tool_error", {"child": result.get("child"), "status": result.get("status"), "operation": "delegate"})
