@@ -15,7 +15,7 @@ def main():
     if args.command == "stop":
         from .client import companion
         for run in all_objects("runs"):
-            if run["status"] in ("running", "queued", "paused", "review"):
+            if run["status"] in ("running", "queued", "approval", "paused", "review"):
                 run["status"] = "stopped"
                 put("runs", run)
                 from .server import kill_worker

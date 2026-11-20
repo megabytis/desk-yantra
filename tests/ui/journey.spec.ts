@@ -12,7 +12,7 @@ test('fixture: UI connection, model discovery, real host edit and artifact', asy
   writeFileSync(join(root,'test_math.py'),'import unittest\nfrom maths import add\nclass TestMath(unittest.TestCase):\n    def test_add(self):\n        self.assertEqual(add(2, 3), 5)\n');
   await page.addInitScript(()=>localStorage.setItem('paw.showTestData','true'));
   await page.goto('/');
-  await page.getByLabel('Launch token').fill(readFileSync('.state/token','utf8').trim());
+  await page.getByLabel('Launch token').fill(readFileSync(join(process.env.PAW_STATE || '.state','token'),'utf8').trim());
   await page.getByRole('button',{name:'Connect to workbench'}).click();
   await page.getByRole('button',{name:/Settings & providers/}).click();
   await page.getByRole('button',{name:/Add connection/}).click();

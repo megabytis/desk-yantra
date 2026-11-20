@@ -1,10 +1,11 @@
+import {join} from 'node:path';
 import {test,expect} from '@playwright/test';
 import {readFileSync} from 'node:fs';
 
 test('settings: edit connections without returning keys and edit agent instructions',async({page})=>{
   await page.addInitScript(()=>localStorage.setItem('paw.showTestData','true'));
   await page.goto('/');
-  await page.getByLabel('Launch token').fill(readFileSync('.state/token','utf8').trim());
+  await page.getByLabel('Launch token').fill(readFileSync(join(process.env.PAW_STATE || '.state','token'),'utf8').trim());
   await page.getByRole('button',{name:'Connect to workbench'}).click();
   await page.getByRole('button',{name:/Settings & providers/}).click();
   await page.getByRole('button',{name:/Add connection/}).click();

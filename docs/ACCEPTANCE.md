@@ -82,3 +82,26 @@ This file is the continuation handoff. Fixture and live evidence must remain sep
 | `npx playwright test` from `desk-yantra` after migration | All 4 fixture UI tests passed in 46.9s: delegation/reconnect, deny/revoke/stop, actual Git repair/download, and settings. The fixture responses are scripted; OS effects are real disposable test effects. |
 
 Do not mark these complete based on mocks, screenshots, or code inspection alone. Current source is a runnable initial product, not the entire requested scope.
+
+## Phase 0 fixture reproducibility — 2026-11-20
+
+Contributor: **OpenAI Codex (GPT-6)**, under owner direction.
+
+Implemented `scripts/check_ui.py`: private disposable PAW_STATE, occupied-port checks (tolerating TCP TIME_WAIT), service readiness, matching token path for UI tests, application stop followed by service process-group cleanup on success/failure. CI now invokes this runner instead of backgrounding `uv run`, has read-only repository permissions and a 20-minute timeout. CLI stop now includes approval-waiting runs, covered by `tests/test_cli.py`. Added CONTRIBUTING.md, SECURITY.md and docs/RELEASE.md; README documents the isolated command.
+
+GitHub Actions was checked through the public API and job logs. [Migration run 44706109312](https://github.com/megabytis/desk-yantra/actions/runs/44706109312), commit `dfb992e407abf9f4657d37724fc120639e117768`, **failed** despite all test steps passing (44 Python tests, four UI tests in 53.1s, build and Chromium probe). The setup-uv post-job `uv cache prune --ci` timed out after 300 seconds waiting for the cache lock retained by background uv services. Starting services directly with Python and owning their cleanup addresses that lifecycle cause. The revised workflow has not been pushed or verified on GitHub; CI success remains an open gate.
+
+| Command / check | Actual result this session |
+| --- | --- |
+| `npm run build` | PASS TypeScript and Vite build, Vite bundling 1.11s. |
+| `PAW_STATE=/tmp/desk-yantra-unit-verified LITELLM_LOCAL_MODEL_COST_MAP=True .venv/bin/python -m pytest -q` | PASS 45 tests, 3 dependency warnings in 7.00s, including CLI stop while waiting for approval. |
+| `.venv/bin/python tests/browser_probe.py` | PASS local Chromium fixture: navigation, persistent fill/click, keyboard takeover, screenshot and file creation. |
+| `.venv/bin/python scripts/check_ui.py` | PASS four UI tests against fresh private state (1.1m before final port/cleanup refinement). Scripted model fixture; actual disposable file/process effects. Final verification below. |
+| Second runner while first suite was active | Correctly refused occupied port 8765 with exit 1 before starting services. |
+| `.venv/bin/python scripts/check_ui.py --grep no-such-fixture-check` | Expected exit 1 with `No tests found`; cleanup completed, allowing immediate subsequent runner startup. |
+| Credential-signature scan of all 61 tracked files | No selected private-key, GitHub-token, provider-key or AWS-key signatures matched; no tracked private runtime-state paths. This bounded scan is not a comprehensive secret/history audit. |
+| `git diff --check` | PASS. |
+
+Initial sandboxed network checks could not create sockets; the Python and browser fixture checks above ran with approved escalation. An initial restricted Python invocation was interrupted after stalling on socket-dependent tests; its partial output is not counted as verification. No hosted-provider, native Ollama, Docker isolation, clean Arch installation or desktop verification was performed in this milestone. Project license selection, dependency notices, release supply-chain controls, state upgrade/rollback tests and Phase 1 security review remain open. No upstream source was copied.
+
+Final completed runner verification: `.venv/bin/python scripts/check_ui.py` exited 0 with **4 passed (1.1m)** after the cleanup and TCP port-reuse changes. These are scripted model fixtures with real disposable host effects. Post-run HTTP connection to port 8765 was refused, confirming the application listener was closed.

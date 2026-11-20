@@ -14,7 +14,7 @@ async function state(page: Page) {return page.evaluate(() => fetch('/api/state')
 async function setup(page: Page) {
   await page.addInitScript(()=>localStorage.setItem('paw.showTestData','true'));
   await page.goto('/');
-  await page.getByLabel('Launch token').fill(readFileSync('.state/token','utf8').trim());
+  await page.getByLabel('Launch token').fill(readFileSync(join(process.env.PAW_STATE || '.state','token'),'utf8').trim());
   await page.getByRole('button',{name:'Connect to workbench'}).click();
   await expect(page.getByRole('heading',{name:'What do you want to get done?',exact:true})).toBeVisible({timeout:30000});
   const provider = await post(page,'providers',{name:'Fixture control',type:'compatible',url:'http://127.0.0.1:18767/v1'});
