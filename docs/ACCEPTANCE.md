@@ -113,3 +113,7 @@ Contributor: **OpenAI Codex (GPT-6-sol)**. GitHub Actions run [44708120050](http
 ## Revocation race regression — 2026-11-20
 
 Contributor: **OpenAI Codex (GPT-6-sol)**. A write paused immediately after one-use approval consumption was revoked before file admission. The request returned 403 and created no file. Initial focused test: 10 passed. The first full run exposed a revoke 500 caused by a historical run record missing `grant`; companion now skips records without a matching grant. Final `PAW_STATE=/tmp/desk-yantra-race-fixed LITELLM_LOCAL_MODEL_COST_MAP=True .venv/bin/python -m pytest -q --tb=short`: **46 passed, 3 warnings in 7.05s**. This verifies the controlled admission race, not all revocation timings or a live hostile workload.
+
+## Shell launch revocation race — 2026-11-20
+
+Contributor: **OpenAI Codex (GPT-6-sol)**. Added deterministic test pausing a shell action after its exact approval was consumed, revoking its grant, then releasing execution. Companion returned HTTP 403 and the command created no file. `PAW_STATE=/tmp/desk-yantra-shell-race-full LITELLM_LOCAL_MODEL_COST_MAP=True .venv/bin/python -m pytest -q`: **47 passed, 3 warnings in 7.01s**. GitHub Actions run 44708949753 for prior commit was in progress when checked. This does not establish behavior for an already-running process.

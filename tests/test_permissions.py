@@ -166,3 +166,39 @@ def test_revoke_waiting_on_file_admission_blocks_write(tmp_path, monkeypatch):
     assert not worker.is_alive()
     assert result[0].status_code == 403
     assert not (tmp_path / "race.txt").exists()
+
+
+def test_revoke_before_shell_launch_blocks_process(tmp_path, monkeypatch):
+    """A consumed approval cannot launch a shell after the grant is revoked."""
+    grant, run = setup_run(tmp_path)
+    action = authorize(run, {"op": "shell", "command": "touch race-shell.txt"})
+    entered = threading.Event()
+    release = threading.Event()
+    original = companion.claim_approval
+
+    def wait_after_claim(*args):
+        result = original(*args)
+        entered.set()
+        assert release.wait(10)
+        return result
+
+    monkeypatch.setattr(companion, "claim_approval", wait_after_claim)
+    result = []
+    def attempt():
+        try:
+            companion.execute(run["id"], action.copy())
+            result.append("executed")
+        except Exception as error:
+            result.append(error)
+
+    worker = threading.Thread(target=attempt)
+    worker.start()
+    assert entered.wait(10)
+    try:
+        assert companion.revoke(grant["id"]) == {"revoked": True}
+    finally:
+        release.set()
+        worker.join(10)
+    assert not worker.is_alive()
+    assert getattr(result[0], "status_code", None) == 403
+    assert not (tmp_path / "race-shell.txt").exists()
