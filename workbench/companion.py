@@ -55,7 +55,7 @@ def recover_commands():
 async def authenticate(request: Request, call_next):
     from fastapi.responses import JSONResponse
     import secrets
-    if request.headers.get("origin") or not secrets.compare_digest(request.headers.get("authorization", ""), "Bearer " + store.TOKEN):
+    if request.headers.get("origin") or not secrets.compare_digest(request.headers.get("authorization", ""), "Bearer " + store.current_token()):
         return JSONResponse({"detail": "Companion authentication required"}, status_code=403)
     return await call_next(request)
 

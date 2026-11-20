@@ -90,7 +90,7 @@ async def security(request: Request, call_next):
             return JSONResponse({"detail": "Invalid Content-Length header"}, status_code=400)
     if request.url.path.startswith("/api/") and request.url.path != "/api/login":
         token = request.cookies.get("paw", "")
-        if not secrets.compare_digest(token, store.TOKEN):
+        if not secrets.compare_digest(token, store.current_token()):
             return JSONResponse({"detail": "Pair this browser with the local launch token"}, status_code=401)
         if request.method != "GET" and request.headers.get("x-paw") != "1":
             return JSONResponse({"detail": "Missing request protection"}, status_code=403)
@@ -115,10 +115,10 @@ async def security(request: Request, call_next):
 
 @app.post("/api/login")
 def login(body: dict):
-    if not secrets.compare_digest(str(body.get("token", "")), store.TOKEN):
+    if not secrets.compare_digest(str(body.get("token", "")), store.current_token()):
         raise HTTPException(401, "Invalid launch token")
     response = JSONResponse({"ok": True})
-    response.set_cookie("paw", store.TOKEN, httponly=True, samesite="strict")
+    response.set_cookie("paw", store.current_token(), httponly=True, samesite="strict")
     return response
 
 

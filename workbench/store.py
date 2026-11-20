@@ -25,15 +25,28 @@ def private_file(name, create):
 TOKEN = private_file("token", lambda: secrets.token_urlsafe(32))
 
 
+def current_token():
+    """Read the shared token so separately running services see rotations."""
+    return (STATE / "token").read_text().strip()
+
+
 def rotate_token():
     global TOKEN
     new_token = secrets.token_urlsafe(32)
-    path = STATE / "token"
-    descriptor = os.open(path, os.O_WRONLY | os.O_TRUNC | os.O_CREAT, 0o600)
-    with os.fdopen(descriptor, "w") as stream:
-        stream.write(new_token)
+    temporary = STATE / ("token." + secrets.token_hex(8) + ".tmp")
+    descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    try:
+        with os.fdopen(descriptor, "w") as stream:
+            stream.write(new_token)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, STATE / "token")
+    finally:
+        temporary.unlink(missing_ok=True)
     TOKEN = new_token
     return new_token
+
+
 ENCRYPTION_KEY = private_file("encryption.key", lambda: Fernet.generate_key().decode())
 CIPHER = Fernet(ENCRYPTION_KEY)
 LOCK = threading.RLock()

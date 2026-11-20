@@ -82,3 +82,28 @@ def test_chunked_payload_limit_rejects_actual_bytes_without_length():
     response = client.post("/api/runs", headers={"Host": "127.0.0.1:8765", "x-paw": "1", "Content-Type": "application/json"}, content=chunks)
     assert response.status_code == 413
     assert "exceeds size limit" in response.json()["detail"]
+
+
+def test_token_rotation_reaches_separate_process():
+    import os
+    import subprocess
+    import sys
+
+    child = subprocess.Popen(
+        [sys.executable, "-u", "-c", "from workbench import store; import sys; print(store.TOKEN, flush=True); sys.stdin.readline(); print(store.current_token(), flush=True)"],
+        stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, env=os.environ.copy(),
+    )
+    old = child.stdout.readline().strip()
+    try:
+        new = store.rotate_token()
+        assert new != old
+        child.stdin.write("continue\n")
+        child.stdin.flush()
+        assert child.stdout.readline().strip() == new
+        assert child.wait(timeout=5) == 0
+    finally:
+        if child.poll() is None:
+            child.kill()
+            child.wait()
+        child.stdin.close()
+        child.stdout.close()
