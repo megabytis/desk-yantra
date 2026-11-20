@@ -14,6 +14,7 @@ import stat
 import tempfile
 
 FORMAT = 1
+MAX_SCHEMA_VERSION = 1
 ACTIVE = {"queued", "running", "approval", "paused"}
 
 
@@ -44,6 +45,8 @@ def _objects(db, kind):
 
 
 def _validate_db(db):
+    if db.execute("PRAGMA user_version").fetchone()[0] > MAX_SCHEMA_VERSION:
+        raise ValueError("Backup schema is newer than this Desk Yantra build")
     if db.execute("PRAGMA integrity_check").fetchone()[0] != "ok":
         raise ValueError("SQLite integrity check failed")
     active = [item["id"] for item in _objects(db, "runs") if item.get("status") in ACTIVE]

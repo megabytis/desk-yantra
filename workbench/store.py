@@ -50,14 +50,29 @@ def rotate_token():
 ENCRYPTION_KEY = private_file("encryption.key", lambda: Fernet.generate_key().decode())
 CIPHER = Fernet(ENCRYPTION_KEY)
 LOCK = threading.RLock()
+SCHEMA_VERSION = 1
 DB = sqlite3.connect(STATE / "workbench.db", check_same_thread=False)
-DB.execute("PRAGMA journal_mode=WAL")
-DB.executescript("""
-CREATE TABLE IF NOT EXISTS objects (kind TEXT, id TEXT, body TEXT, PRIMARY KEY(kind,id));
-CREATE TABLE IF NOT EXISTS events (seq INTEGER PRIMARY KEY AUTOINCREMENT, run TEXT, time REAL, kind TEXT, body TEXT);
-CREATE INDEX IF NOT EXISTS events_run_sequence ON events(run,seq);
-""")
 
+
+def initialize_schema(database):
+    version = database.execute("PRAGMA user_version").fetchone()[0]
+    if version > SCHEMA_VERSION:
+        raise RuntimeError(f"State schema {version} is newer than this Desk Yantra build ({SCHEMA_VERSION})")
+    if version == 0:
+        database.execute("BEGIN IMMEDIATE")
+        try:
+            database.execute("CREATE TABLE IF NOT EXISTS objects (kind TEXT, id TEXT, body TEXT, PRIMARY KEY(kind,id))")
+            database.execute("CREATE TABLE IF NOT EXISTS events (seq INTEGER PRIMARY KEY AUTOINCREMENT, run TEXT, time REAL, kind TEXT, body TEXT)")
+            database.execute("CREATE INDEX IF NOT EXISTS events_run_sequence ON events(run,seq)")
+            database.execute("PRAGMA user_version=1")
+            database.commit()
+        except Exception:
+            database.rollback()
+            raise
+    database.execute("PRAGMA journal_mode=WAL")
+
+
+initialize_schema(DB)
 
 def put(kind, value):
     with LOCK:
