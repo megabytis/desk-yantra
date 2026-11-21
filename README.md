@@ -46,6 +46,8 @@ Edit a connection to replace its API key, or select **Remove saved API key from 
 
 After a completed task, send a follow-up in the conversation composer. Prior results remain attached to the conversation; the next task gets its own run history and fresh approvals. Interrupted tasks require review before starting replacement work. A run finishing does not establish task correctness: the interface flags an unresolved last-command failure, and final model messages are displayed alongside actual tool evidence. One bounded evidence review lets an agent correct a premature conclusion while preserving tool budgets and approvals.
 
+Outcome badges report observed evidence conservatively. A passing command after a file edit is shown as **checks passed**, with the command in the evidence trail; it does not certify the full requested result. Shell, browser and delegated actions also require your review. Read-only inspection is marked verified only when a read/list tool returned a result without tool errors.
+
 OpenAI, Anthropic, Gemini, OpenRouter, xAI, Ollama, LM Studio and compatible APIs have discovery adapters. Unknown model capabilities are explicitly unknown. Keys are encrypted at rest with a local mode-0600 key. This protects accidental database disclosure, not compromise of the Linux account. Local models require no paid account. Ollama uses `/api/tags` for installed models and `/v1` for inference. The model must support tool calling for agent work.
 
 ## Sandbox

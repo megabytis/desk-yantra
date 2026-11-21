@@ -93,7 +93,7 @@ export function TaskTree({
             </span>
             <span className={`run-status status-${node.status}`}>{node.status}</span>
             {vStatus && (
-              <span className={`verification-badge status-${vStatus.includes('verified') ? 'verified' : 'unverified'}`}>
+              <span className={`verification-badge status-${node.verification?.verified === true ? 'verified' : 'unverified'}`}>
                 {vStatus.replace(/_/g, ' ')}
               </span>
             )}

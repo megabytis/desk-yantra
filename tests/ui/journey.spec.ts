@@ -55,6 +55,7 @@ test('fixture: UI connection, model discovery, real host edit and artifact', asy
   await expect(page.locator('.inline-approval h3')).toContainText('shell',{timeout:45000});
   await page.getByRole('button',{name:'Approve this action',exact:true}).click({timeout:45000});
   await expect(page.locator('.execution-pill')).toContainText('completed',{timeout:45000});
+  await expect(page.getByRole('alert').filter({hasText:'Result needs your review'})).toContainText('A command passed after a file write');
   expect(readFileSync(join(root,'maths.py'),'utf8')).toContain('return left + right');
   execFileSync('python',['-m','unittest','test_math.py'],{cwd:root});
   await page.getByRole('button',{name:'Files',exact:true}).click();

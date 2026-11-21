@@ -498,3 +498,20 @@ The initial retention implementation deleted every event for older terminal runs
 | `npm run build` | PASS: TypeScript and Vite build in 1.01s. |
 | `.venv/bin/python scripts/check_ui.py` | PASS: 6 passed in 1.1m. |
 | GitHub Actions run `44892748538` for commit `e239b9a` | PASS: completed with conclusion `success`. |
+
+## Conservative outcome evidence — 2026-11-21
+
+Contributor: **OpenAI Codex (GPT-6)**, under owner direction.
+
+The prior verifier marked any successful shell action as `verified_success`, even if it only printed text, and a post-edit exit code zero was treated as proof of the whole task. It also marked runs without observations as verified read-only and the task tree colored `unverified_mutations` as verified because its name contains “verified.” The updated verifier records passed post-edit commands as `checks_passed` but leaves overall correctness for review. Shell, browser and delegation execution alone are unverified. It requires a successful read/list observation for a read-only badge, records tool errors, and distinguishes a diagnostic failure before a later fix from an unresolved failure after the last edit. The workspace warning explains the actual outcome.
+
+The first full browser run caught the expected failing-test step in the repair fixture being treated as unresolved. After the event-order correction, the focused real backend journey passed. This is still a heuristic evidence summary, not a task-specific correctness oracle.
+
+| Command / check | Actual result this session |
+| --- | --- |
+| `.venv/bin/python scripts/check_python.py tests/test_verification_and_tree.py -q` | PASS: 9 passed in 0.40s after correction. |
+| `.venv/bin/python scripts/check_python.py` | PASS: 144 passed, 10 warnings in 13.04s after correction. |
+| `npm run build` | PASS: TypeScript and Vite build in 1.89s. |
+| `.venv/bin/python scripts/check_ui.py` | Initial run: 5 passed, 1 failed; fixture repair's pre-edit failing test was classified as unresolved. |
+| `.venv/bin/python scripts/check_ui.py tests/ui/journey.spec.ts` | PASS: 1 passed in 24.3s after correction. |
+| GitHub Actions for this revision | Pending push and run. |

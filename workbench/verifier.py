@@ -95,22 +95,39 @@ def verify_run_outcome(run_id: str) -> dict:
                 "summary": "Delegated subtask(s) completed",
             })
 
+    # A tool completing is evidence of execution, not proof that the user's
+    # goal was met. Keep the checks in the report without upgrading the task.
+    last_write_seq = max((item["seq"] for item in history if item["kind"] == "tool_call" and isinstance(item["data"], dict) and item["data"].get("op") == "write"), default=0)
+    tool_errors = [item for item in history if item["kind"] == "tool_error" and (not last_write_seq or item["seq"] > last_write_seq)]
+    read_only_calls = bool(tool_calls) and all(c.get("op") in ("read", "list") for c in tool_calls)
+    read_observed = any(item["kind"] == "tool_result" for item in history)
+    passing_post_write_check = any(v.get("kind") == "post_mutation_test" and v.get("passed") for v in verifications)
+
     # Determine overall verification status
     if last_command_failed:
         outcome = "unresolved_command_failure"
         reason = f"Last shell command exited with non-zero status ({last_command.get('exit_status')})."
-    elif writes and not any(v.get("kind") == "post_mutation_test" and v.get("passed") for v in verifications):
+    elif tool_errors:
+        outcome = "tool_error"
+        reason = "At least one tool action failed or was denied; inspect the event history."
+    elif writes and not passing_post_write_check:
         outcome = "unverified_mutations"
         reason = "Files were modified or written, but no subsequent passing command or test verified the changes."
     elif any(v.get("passed") is False for v in verifications):
         outcome = "verification_failed"
         reason = "One or more verification checks failed."
-    elif mutations:
-        outcome = "verified_success"
-        reason = "Changes were executed and verified by passing commands or tool evidence."
-    else:
+    elif writes and passing_post_write_check:
+        outcome = "checks_passed"
+        reason = "A command passed after a file write. This checks execution, not the full requested goal."
+    elif read_only_calls and read_observed:
         outcome = "verified_read_only"
-        reason = "Read-only inspection completed without modifying workspace files."
+        reason = "Read-only tool results were observed; the interpretation of those results is not checked."
+    elif tool_calls:
+        outcome = "unverified_actions"
+        reason = "Tool actions were observed, but the requested result was not independently verified."
+    else:
+        outcome = "no_observation"
+        reason = "No tool result was observed for this run."
 
     report = {
         "run_id": run_id,
@@ -120,14 +137,14 @@ def verify_run_outcome(run_id: str) -> dict:
         "verifications_count": len(verifications),
         "verifications": verifications,
         "outcome": outcome,
-        "verified": outcome in ("verified_success", "verified_read_only"),
+        "verified": outcome == "verified_read_only",
         "reason": reason,
         "timestamp": time.time(),
     }
 
     event(run_id, "verification_contract", report)
     run["verification"] = report
-    run["outcome"] = "needs_review" if outcome in ("unresolved_command_failure", "unverified_mutations", "verification_failed") else "verified"
+    run["outcome"] = "verified" if report["verified"] else "needs_review"
     put("runs", run)
     return report
 

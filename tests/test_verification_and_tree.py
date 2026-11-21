@@ -65,16 +65,47 @@ def test_verification_unverified_file_edits():
 def test_verification_successful_code_repair_with_passing_tests():
     run_id = str(uuid.uuid4())
     put("runs", {"id": run_id, "task": "Fix bug and run tests", "status": "completed", "tools": ["files", "shell"]})
+    event(run_id, "tool_call", {"op": "shell", "command": "pytest tests/"})
+    event(run_id, "command_result", {"command": "pytest tests/", "exit_status": 1, "cwd": "/tmp"})
+    event(run_id, "tool_error", {"exit_status": 1, "operation": "shell"})
     event(run_id, "tool_call", {"op": "write", "path": "fix.py", "content": "x = 1"})
     event(run_id, "tool_result", "File written")
     event(run_id, "tool_call", {"op": "shell", "command": "pytest tests/"})
     event(run_id, "command_result", {"command": "pytest tests/", "exit_status": 0, "cwd": "/tmp"})
 
     report = verify_run_outcome(run_id)
-    assert report["outcome"] == "verified_success"
-    assert report["verified"] is True
+    assert report["outcome"] == "checks_passed"
+    assert report["verified"] is False
     assert any(v["kind"] == "post_mutation_test" and v["passed"] for v in report["verifications"])
-    assert get("runs", run_id)["outcome"] == "verified"
+    assert get("runs", run_id)["outcome"] == "needs_review"
+
+
+def test_shell_completion_does_not_verify_user_goal():
+    run_id = str(uuid.uuid4())
+    put("runs", {"id": run_id, "task": "Repair app", "status": "completed"})
+    event(run_id, "tool_call", {"op": "shell", "command": "echo done"})
+    event(run_id, "command_result", {"command": "echo done", "exit_status": 0})
+    report = verify_run_outcome(run_id)
+    assert report["outcome"] == "unverified_actions"
+    assert report["verified"] is False
+
+
+def test_tool_failure_prevents_read_only_verified_label():
+    run_id = str(uuid.uuid4())
+    put("runs", {"id": run_id, "task": "Inspect app", "status": "completed"})
+    event(run_id, "tool_call", {"op": "read", "path": "missing"})
+    event(run_id, "tool_error", "File not found")
+    report = verify_run_outcome(run_id)
+    assert report["outcome"] == "tool_error"
+    assert report["verified"] is False
+
+
+def test_no_actions_cannot_be_verified_read_only():
+    run_id = str(uuid.uuid4())
+    put("runs", {"id": run_id, "task": "Repair app", "status": "completed"})
+    report = verify_run_outcome(run_id)
+    assert report["outcome"] == "no_observation"
+    assert report["verified"] is False
 
 
 def test_verification_unresolved_command_failure():
