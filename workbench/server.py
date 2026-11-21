@@ -651,6 +651,44 @@ async def stream(ident: str, request: Request, after: int = 0):
     return StreamingResponse(generate(), media_type="text/event-stream")
 
 
+@app.get("/api/runs/{ident}/tree")
+def run_tree(ident: str):
+    run = get("runs", ident)
+    root_id = run.get("root_run", ident)
+    all_runs = all_objects("runs")
+    all_agents = {a["id"]: a for a in all_objects("agents")}
+    all_artifacts = all_objects("artifacts")
+
+    def build_node(r_id):
+        r = next((item for item in all_runs if item["id"] == r_id), None)
+        if not r:
+            return None
+        agent_obj = all_agents.get(r.get("agent"), {})
+        node_artifacts = [
+            {"id": a["id"], "name": a.get("name", ""), "created": a.get("created", 0)}
+            for a in all_artifacts if a.get("run") == r_id
+        ]
+        children = [build_node(child["id"]) for child in all_runs if child.get("parent") == r_id]
+        children = [c for c in children if c is not None]
+        return {
+            "id": r["id"],
+            "task": r.get("task", ""),
+            "agent": agent_obj.get("name", "Unknown agent"),
+            "agent_id": r.get("agent"),
+            "status": r.get("status"),
+            "tools": r.get("tools", []),
+            "depth": r.get("depth", 0),
+            "created": r.get("created", 0),
+            "stop_reason": r.get("stop_reason"),
+            "outcome": r.get("outcome"),
+            "verification": r.get("verification"),
+            "artifacts": node_artifacts,
+            "children": children,
+        }
+
+    return build_node(root_id)
+
+
 @app.post("/api/approvals/{ident}")
 def approve(ident: str, body: dict):
     approval = get("approvals", ident)

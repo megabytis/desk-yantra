@@ -22,3 +22,25 @@
 .new-tab-btn:hover{background:#283b30;color:#e2eee4}
 .browser-page-title{font-size:11px;color:#94a699;font-weight:normal}
 .browser-elements-badge{font-size:10px;color:#7e9a86;margin-left:6px;font-weight:normal}
+
+.verification-badge{display:inline-block;padding:2px 7px;font-size:10px;font-weight:600;border-radius:4px;text-transform:uppercase;letter-spacing:.5px;margin-left:8px}
+.verification-badge.status-verified{background:#1e3d29;color:#8ce3a3;border:1px solid #366c48}
+.verification-badge.status-unverified{background:#422a18;color:#f0ad73;border:1px solid #734824}
+
+.delegation-tree-container{padding:10px 0;display:flex;flex-direction:column;gap:12px}
+.tree-toolbar{display:flex;flex-direction:column;gap:3px;margin-bottom:10px}
+.tree-toolbar strong{font-size:13px;color:#d8e2dc}
+.tree-toolbar small{font-size:11px;color:#88948c}
+.tree-branch{display:flex;flex-direction:column;gap:8px}
+.tree-children{margin-left:20px;padding-left:14px;border-left:2px dashed #304037;display:flex;flex-direction:column;gap:10px;margin-top:8px}
+.tree-card{background:#18201a;border:1px solid #2d3b31;border-radius:6px;padding:12px;cursor:pointer;transition:border-color .15s}
+.tree-card:hover{border-color:#486350}
+.tree-card.tree-selected{border-color:#7bb58d;background:#1e2921}
+.tree-card-header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;font-size:12px}
+.tree-agent-badge{color:#9ebb9f}
+.tree-agent-badge strong{color:#e2ece4}
+.tree-task-text{font-size:12px;color:#cbd5ce;margin:4px 0 8px;line-height:1.5}
+.tree-card-meta{font-size:10px;color:#7e8e82}
+.tree-artifacts{margin-top:8px;padding-top:6px;border-top:1px solid #29362d;display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:10px;color:#7e8e82}
+.tree-artifact-link{color:#9ed4af;text-decoration:none;padding:2px 6px;background:#202e24;border-radius:3px}
+.tree-artifact-link:hover{text-decoration:underline}

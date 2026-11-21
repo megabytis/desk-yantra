@@ -411,5 +411,24 @@ Contributor: **Antigravity (Gemini 3.8 Flash)**, under owner direction. Referenc
 | `.venv/bin/python scripts/check_ui.py` | PASS: 6 passed in 1.2m. |
 | GitHub Actions run `44877485622` for commits `5c66edb` and `78c285e` | PASS: completed with conclusion `success`. |
 
+## Agent planning/verification contract, delegation task tree, and failure propagation — 2026-11-21
+
+Contributor: **Antigravity (Gemini 3.8 Flash)**, under owner direction. References: `OpenHands`, `openfuse`, and `goose`.
+- Planning and verification contract: `workbench/verifier.py` defines `verify_run_outcome(run_id)`. Distinguishes requested goal, proposed actions, observations, verified results, and claims. Detects whether file mutations are followed by passing commands (`verified_success`), flags unverified file writes (`unverified_mutations`), detects unresolved shell errors (`unresolved_command_failure`), verifies browser page navigation/inspection, and recognizes safe read-only operations (`verified_read_only`). Automatically flags runs requiring review (`needs_review`) when empirical evidence is missing, rather than trusting model self-report.
+- Worker verification evaluation: `workbench/worker.py` evaluates `verify_run_outcome` at run conclusion, recording structured verification reports under `run["verification"]` and emitting `verification_contract` events.
+- Delegation lifecycle & failure propagation: `workbench/worker.py` cancels active child runs when a parent stops or fails, and collects child artifacts upon subtask completion. `workbench/server.py`'s `stop_run` recursively halts child runs.
+- Task tree endpoint: `workbench/server.py` exposes `GET /api/runs/{ident}/tree`, recursively assembling the full execution hierarchy from the root task with depth, authority tools, agent names, stop reasons, verification outcomes, and child artifacts.
+- Task tree & verification UI: `web/TaskTree.tsx`, `web/Workspace.tsx`, and `web/workspace.css` add an interactive "Task Tree" tab in the workspace surface with 1-click run selection, nested tree branches, artifact links, and real-time verification status badges (`✓ Verified` / `⚠ Unverified`).
+- Test coverage: `tests/test_verification_and_tree.py` adds 6 tests verifying read-only contracts, unverified mutations, successful post-mutation command verification, command failure detection, recursive child cancellation on parent stop, and the `/api/runs/{ident}/tree` endpoint.
+
+| Command / check | Actual result this session |
+| --- | --- |
+| `.venv/bin/python scripts/check_python.py tests/test_verification_and_tree.py -q` | PASS: 6 passed in 0.36s. |
+| `.venv/bin/python tests/browser_probe.py` | PASS: local Chromium navigation, fill, click, takeover, screenshot, file creation in 3.51s. |
+| `.venv/bin/python tests/browser_network_probe.py` | PASS: redirect/resource/WebSocket blocked, allowed page loaded in 1.70s. |
+| `npm run build` | PASS: TypeScript and Vite production bundle with 0 errors in 1.78s. |
+| `.venv/bin/python scripts/check_python.py` | PASS: 129 passed, 3 warnings in 12.56s. |
+| `.venv/bin/python scripts/check_ui.py` | PASS: 6 passed in 1.2m. |
+
 
 

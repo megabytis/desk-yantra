@@ -81,15 +81,29 @@ class WorkExecutor(ToolExecutor):
             if action.op == "delegate":
                 if run["depth"] >= 2 or "delegate" not in run["tools"]:
                     raise ValueError("Delegation not permitted or depth limit reached")
-                from .server import new_run
+                from .server import new_run, stop_run
                 child = new_run({"agent": action.agent, "task": action.content, "grant": run["grant"]}, parent=run)
                 event(self.run_id, "delegation", {"child": child["id"], "agent": action.agent})
-                while get("runs", child["id"])["status"] in ("queued", "running", "approval"):
-                    if get("runs", self.run_id)["status"] == "stopped":
-                        raise ValueError("Parent stopped")
-                    time.sleep(0.2)
-                from .store import events
-                result = {"child": child["id"], "status": get("runs", child["id"])["status"], "events": events(child["id"])[-12:]}
+                try:
+                    while get("runs", child["id"])["status"] in ("queued", "running", "approval"):
+                        parent_status = get("runs", self.run_id)["status"]
+                        if parent_status in ("stopped", "failed"):
+                            stop_run(child["id"])
+                            raise ValueError(f"Parent {parent_status}; cancelled delegated child {child['id']}")
+                        time.sleep(0.2)
+                except Exception:
+                    stop_run(child["id"])
+                    raise
+                from .store import events, all_objects
+                child_artifacts = [a for a in all_objects("artifacts") if a.get("run") == child["id"]]
+                child_status = get("runs", child["id"])["status"]
+                result = {
+                    "child": child["id"],
+                    "status": child_status,
+                    "events": events(child["id"])[-12:],
+                    "artifacts": [{"id": a["id"], "name": a.get("name", "")} for a in child_artifacts]
+                }
+                event(self.run_id, "delegation_finished", {"child": child["id"], "status": child_status, "artifacts_count": len(child_artifacts)})
             else:
                 if action.op not in ("read","list"):
                     approval = {"id": str(uuid.uuid4()), "run": self.run_id, "action": payload, "status": "pending"}
@@ -273,13 +287,19 @@ def run_worker(run_id):
             event(run_id,'verification_check',{'status':'unresolved_command_failure','command':commands[-1]})
             conversation.send_message('Execution evidence check, not a new task: the last actual shell command failed with exit status '+str(commands[-1].get('exit_status'))+'. No later passing command verified a fix. Review your conclusion against tool evidence. If the user requested a repair, continue with actual read_file/write_file/run_command tools and verify it. If the requested task intentionally demonstrates a failure or you are blocked, explain that accurately. Do not claim an edit or passing test without executed tool evidence. Existing approvals, permissions and budgets still apply.')
             conversation.run()
+        from .verifier import verify_run_outcome
+        verification = verify_run_outcome(run_id)
         run = get("runs", run_id)
         if run["status"] != "stopped":
-            commands=[item['data'] for item in events(run_id) if item['kind']=='command_result']
-            run['last_command']=commands[-1] if commands else None
-            run['outcome']='needs_review' if commands and commands[-1].get('exit_status')!=0 else 'finished'
-            stop_reason = 'review' if run['outcome'] == 'needs_review' else 'completed'
-            transition_run(run_id,('running',),'completed',{'last_command':run['last_command'],'outcome':run['outcome'],'stop_reason':stop_reason})
+            commands = [item['data'] for item in events(run_id) if item['kind'] == 'command_result']
+            run['last_command'] = commands[-1] if commands else None
+            stop_reason = 'review' if run.get('outcome') == 'needs_review' else 'completed'
+            transition_run(run_id, ('running',), 'completed', {
+                'last_command': run['last_command'],
+                'outcome': run.get('outcome', 'finished'),
+                'verification': verification,
+                'stop_reason': stop_reason
+            })
     except Exception as error:
         event(run_id, "error", str(error))
         reason = "timeout" if isinstance(error, TimeoutError) else "tool_budget_exhausted" if "budget exhausted" in str(error).lower() else "failed"
