@@ -621,3 +621,37 @@ Contributor: **Antigravity (Gemini 3.8 Flash)**, under owner direction.
 | `.venv/bin/python scripts/check_ui.py` | PASS: 8 passed in 1.3m. |
 | `git push origin main` | PASS: Commit `ebd3583` pushed to `origin/main`. |
 | GitHub Actions CI run `44903933066` | PASS: Workflow `fixture-tests` completed with conclusion `success`. |
+
+## Gate 3 First useful bot flow & Gate 4 Arch/Hyprland local host access qualification — 2026-11-21
+
+Contributor: **Antigravity (Gemini 3.8 Flash)**, under owner direction.
+- **Gate 3 (First Useful Bot Flow in `next/`)**:
+  - Implemented automated qualification script `next/scripts/verify-first-run.ts`.
+  - Spawns isolated verification server in disposable temp directory (`launchVerificationServer`).
+  - Confirmed initial clean profile has exactly 1 default starter bot and zero legacy fixture records (no `Fixture engineer` or dummy agents).
+  - Qualified provider configuration via `PUT /api/config` (`{ openai: { key: "..." } }`).
+  - Qualified bot creation: created personal bot `Desk Yantra Assistant` with dedicated ID and thread.
+  - Qualified task sending (`send`), settled execution (`wait`), and received bot response with `status: settled`.
+  - Verified conversation message persistence across headless `messages` inspection.
+  - Confirmed data directory cleanliness: no legacy fixture/PAW test directories in user data.
+  - Added executable top-level launcher `scripts/launch_desk_yantra.sh` running on port 8799 with clean `$HOME/.desk-yantra`.
+- **Gate 4 (Arch/Hyprland Local Host Access Qualification)**:
+  - Implemented automated qualification script `next/scripts/verify-arch-host-access.ts`.
+  - Qualified scoped host file operations: `write_file`, `read_file`, `make_folder`, `list_files` with atomic replacement.
+  - Verified boundary protections: overwrite refusal (`overwrite: false`), 10MB read cap, 25MB write cap.
+  - Verified user consent & approval gating via `claimWithYourComputerConsent`:
+    - Full access binds without prompt.
+    - Ask access prompts user before binding.
+    - Denial throws `YourComputerDeclined` and prevents action execution.
+  - Verified approval mode matrix (`full`, `ask`, `auto`, `edits`, `custom`) and emergency downgrade semantics.
+  - Verified host bridge tool switch (`withHostFiles`) enables `OMB_HOST_FILES: "1"` for local computer scope.
+- **Verification evidence**:
+
+| Command / check | Actual result this session |
+| --- | --- |
+| `node --experimental-strip-types scripts/verify-first-run.ts` in `next/` | PASS: Gate 3 verified (isolated server, bot creation, task execution, settled reply, durable messages, clean data dir). |
+| `node --experimental-strip-types scripts/verify-arch-host-access.ts` in `next/` | PASS: Gate 4 qualified (host files, boundaries, overwrite safety, Full/Ask/Deny consent, tool switch). |
+| `pnpm vitest run server/brand.test.ts server/host-files.test.ts server/your-computer-consent.test.ts server/local-computer.test.ts server/approval-mode.test.ts scripts/testing/web-app-assets.test.ts` in `next/` | PASS: 6 test files, 64 tests passed in 7.05s. |
+| `./scripts/launch_desk_yantra.sh --help` | PASS: Launcher executes, prints help and supported options cleanly. |
+| `.venv/bin/python scripts/check_python.py` | PASS: 144 passed, 10 warnings in 12.41s. |
+| `.venv/bin/python scripts/check_ui.py` | PASS: 8 passed in 55.0s across all Playwright UI specs. |
