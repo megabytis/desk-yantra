@@ -7,7 +7,8 @@ export function fixtureConnections(state:Item):Set<string>{
 }
 export function personalState(state:Item):Item{
   const fixtures=fixtureConnections(state);
-  const hiddenAgents=new Set(state.agents.filter((agent:Item)=>fixtures.has(agent.connection)||agent.model?.startsWith('fixture-')).map((agent:Item)=>agent.id));
+  const legacyTestAgent=/^(Fixture (engineer|worker|lead|editable agent)|Live (repair agent|local agent|sandbox researcher))(?:\s|$)/;
+  const hiddenAgents=new Set(state.agents.filter((agent:Item)=>fixtures.has(agent.connection)||agent.model?.startsWith('fixture-')||legacyTestAgent.test(agent.name||'')).map((agent:Item)=>agent.id));
   const agents=state.agents.filter((agent:Item)=>!hiddenAgents.has(agent.id));
   const hiddenGrants=new Set(state.agents.filter((agent:Item)=>hiddenAgents.has(agent.id)).flatMap((agent:Item)=>agent.grants));
   const visibleGrants=new Set(agents.flatMap((agent:Item)=>agent.grants));

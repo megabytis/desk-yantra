@@ -3,7 +3,7 @@ import {test,expect} from '@playwright/test';
 import {readFileSync} from 'node:fs';
 
 test('settings: edit connections without returning keys and edit agent instructions',async({page})=>{
-  await page.addInitScript(()=>localStorage.setItem('paw.showTestData','true'));
+  await page.addInitScript(()=>sessionStorage.setItem('paw.showTestData','true'));
   await page.goto('/');
   await page.getByLabel('Launch token').fill(readFileSync(join(process.env.PAW_STATE || '.state','token'),'utf8').trim());
   await page.getByRole('button',{name:'Connect to workbench'}).click();
@@ -75,7 +75,7 @@ test('settings: edit connections without returning keys and edit agent instructi
 });
 
 test('settings: failed model refresh keeps existing models and explains the failure',async({page})=>{
-  await page.addInitScript(()=>localStorage.setItem('paw.showTestData','true'));
+  await page.addInitScript(()=>sessionStorage.setItem('paw.showTestData','true'));
   await page.goto('/');
   await page.getByLabel('Launch token').fill(readFileSync(join(process.env.PAW_STATE || '.state','token'),'utf8').trim());
   await page.getByRole('button',{name:'Connect to workbench'}).click();

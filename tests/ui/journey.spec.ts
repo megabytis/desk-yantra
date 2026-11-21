@@ -1,16 +1,20 @@
 import {test, expect} from '@playwright/test';
-import {readFileSync, mkdtempSync, writeFileSync, existsSync} from 'node:fs';
+import {readFileSync, mkdtempSync, writeFileSync, existsSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {execFileSync} from 'node:child_process';
 
+const temporaryRoots:string[]=[];
+test.afterEach(()=>{for(const root of temporaryRoots.splice(0))rmSync(root,{recursive:true,force:true});});
+
 test('fixture: UI connection, model discovery, real host edit and artifact', async ({page}) => {
   const root = mkdtempSync(join(tmpdir(),'paw-project-'));
+  temporaryRoots.push(root);
   const agentName = 'Fixture engineer ' + Date.now();
   execFileSync('git',['init',root]);
   writeFileSync(join(root,'maths.py'),'def add(left, right):\n    return left - right\n');
   writeFileSync(join(root,'test_math.py'),'import unittest\nfrom maths import add\nclass TestMath(unittest.TestCase):\n    def test_add(self):\n        self.assertEqual(add(2, 3), 5)\n');
-  await page.addInitScript(()=>localStorage.setItem('paw.showTestData','true'));
+  await page.addInitScript(()=>sessionStorage.setItem('paw.showTestData','true'));
   await page.goto('/');
   await page.getByLabel('Launch token').fill(readFileSync(join(process.env.PAW_STATE || '.state','token'),'utf8').trim());
   await page.getByRole('button',{name:'Connect to workbench'}).click();
@@ -66,4 +70,10 @@ test('fixture: UI connection, model discovery, real host edit and artifact', asy
   await page.getByRole('link',{name:/maths.py/}).click();
   const download = await downloadPromise;
   expect(readFileSync((await download.path())!,'utf8')).toContain('return left + right');
+  await page.evaluate(()=>{localStorage.setItem('paw.showTestData','true');sessionStorage.removeItem('paw.showTestData');});
+  await page.reload();
+  await page.getByRole('button',{name:'Agents',exact:true}).click();
+  await expect(page.getByRole('heading',{name:agentName})).toHaveCount(0);
+  await page.getByLabel('Show test records').check();
+  await expect(page.getByRole('heading',{name:agentName})).toBeVisible();
 });

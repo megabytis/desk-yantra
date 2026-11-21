@@ -3,7 +3,7 @@ import {readFileSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
 
 test('LIVE Docker: local model browses a page and creates a downloadable file in an isolated container',async({page})=>{
-  await page.addInitScript(()=>localStorage.setItem('paw.showTestData','true'));
+  await page.addInitScript(()=>sessionStorage.setItem('paw.showTestData','true'));
   await page.goto('/');
   await page.getByLabel('Launch token').fill(readFileSync('.state/token','utf8').trim());
   await page.getByRole('button',{name:'Connect to workbench'}).click();

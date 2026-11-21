@@ -1,12 +1,16 @@
 import {test,expect} from '@playwright/test';
-import {mkdtempSync,readFileSync,writeFileSync} from 'node:fs';
+import {mkdtempSync,readFileSync,writeFileSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {execFileSync,spawnSync} from 'node:child_process';
 
+const temporaryRoots:string[]=[];
+test.afterEach(()=>{for(const root of temporaryRoots.splice(0))rmSync(root,{recursive:true,force:true});});
+
 test('LIVE host: real local model diagnoses and repairs a failing test with approved edits',async({page})=>{
-  await page.addInitScript(()=>localStorage.setItem('paw.showTestData','true'));
+  await page.addInitScript(()=>sessionStorage.setItem('paw.showTestData','true'));
   const root=mkdtempSync(join(tmpdir(),'paw-live-repair-'));
+  temporaryRoots.push(root);
   execFileSync('git',['init',root],{stdio:'ignore'});
   writeFileSync(join(root,'maths.py'),'def add(left, right):\n    return left - right\n');
   writeFileSync(join(root,'test_math.py'),'import unittest\nfrom maths import add\nclass TestMath(unittest.TestCase):\n    def test_add(self):\n        self.assertEqual(add(2, 3), 5)\n');

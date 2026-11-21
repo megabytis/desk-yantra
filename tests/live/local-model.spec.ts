@@ -1,15 +1,19 @@
 import {test,expect} from '@playwright/test';
-import {readFileSync,mkdtempSync} from 'node:fs';
+import {readFileSync,mkdtempSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 
+const temporaryRoots:string[]=[];
+test.afterEach(()=>{for(const root of temporaryRoots.splice(0))rmSync(root,{recursive:true,force:true});});
+
 test('LIVE: discover local llama.cpp model, infer, execute approved tool and download actual file',async({page})=>{
-  await page.addInitScript(()=>localStorage.setItem('paw.showTestData','true'));
+  await page.addInitScript(()=>sessionStorage.setItem('paw.showTestData','true'));
   await expect.poll(async()=>{
     try {return (await page.request.get((process.env.PAW_LIVE_MODEL_URL || 'http://127.0.0.1:18768/v1').replace(/\/v1\/?$/,'')+'/health')).status();}
     catch {return 0;}
   },{timeout:120000}).toBe(200);
   const root=mkdtempSync(join(tmpdir(),'paw-live-model-'));
+  temporaryRoots.push(root);
   const name='Live local agent '+Date.now();
   await page.goto('/');
   await page.getByLabel('Launch token').fill(readFileSync('.state/token','utf8').trim());

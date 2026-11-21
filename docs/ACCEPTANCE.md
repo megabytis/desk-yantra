@@ -546,3 +546,16 @@ Contributor: **OpenAI Codex (GPT-6)**, under owner direction. The live chat side
 | `.venv/bin/python scripts/check_ui.py` | PASS: 8 passed in 1.2m. |
 | Python suite | Not rerun: frontend and documentation only. |
 | GitHub Actions run `44898130003` for commit `bc9fcf4` | PASS: completed with conclusion `success`. |
+
+## Owner-reported fixture leak and temporary-file cleanup — 2026-11-21
+
+Contributor: **OpenAI Codex (GPT-6)**. Read-only inspection of private state found one real OpenAI connection and no personal bot profile, plus 56 test connections, 79 test agents, 50 test grants, and 85 historical runs. The saved default still references a fixture connection. Fixed legacy fixture-agent filtering, moved the test-record switch from persistent browser storage to session storage, and updated tests to remove their temporary workspaces. Removed 59 `paw-control-*`/`paw-project-*` test directories and two Desk Yantra preview screenshots from `/tmp` (about 2.3 MB). Did not alter the private database, OpenAI key, or unrelated system files.
+
+| Check | Actual result |
+| --- | --- |
+| `npm run build` | PASS: TypeScript and Vite build. |
+| `.venv/bin/python scripts/check_ui.py tests/ui/journey.spec.ts` | BLOCKED: port 8765 occupied before tests started, both in sandbox and elevated attempt. No browser pass claimed. |
+| `git diff --check` | PASS. |
+| `/tmp` follow-up | No matching `paw-control-*`, `paw-project-*`, or two preview PNG paths remained. |
+
+Remaining: browser regression must run when port 8765 is free; test records remain in private state until a reviewed cleanup, and a usable first-bot setup path is still missing.

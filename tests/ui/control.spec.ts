@@ -1,7 +1,10 @@
 import {test, expect, Page} from '@playwright/test';
-import {readFileSync, mkdtempSync, existsSync} from 'node:fs';
+import {readFileSync, mkdtempSync, existsSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
+
+const temporaryRoots:string[]=[];
+test.afterEach(()=>{for(const root of temporaryRoots.splice(0))rmSync(root,{recursive:true,force:true});});
 
 async function post(page: Page, path: string, body: object) {
   return await page.evaluate(async ({path,body}) => {
@@ -12,7 +15,7 @@ async function post(page: Page, path: string, body: object) {
 }
 async function state(page: Page) {return page.evaluate(() => fetch('/api/state').then(response => response.json()));}
 async function setup(page: Page) {
-  await page.addInitScript(()=>localStorage.setItem('paw.showTestData','true'));
+  await page.addInitScript(()=>sessionStorage.setItem('paw.showTestData','true'));
   await page.goto('/');
   await page.getByLabel('Launch token').fill(readFileSync(join(process.env.PAW_STATE || '.state','token'),'utf8').trim());
   await page.getByRole('button',{name:'Connect to workbench'}).click();
@@ -20,6 +23,7 @@ async function setup(page: Page) {
   const provider = await post(page,'providers',{name:'Fixture control',type:'compatible',url:'http://127.0.0.1:18767/v1'});
   await post(page,`providers/${provider.id}/discover`,{});
   const root = mkdtempSync(join(tmpdir(),'paw-control-'));
+  temporaryRoots.push(root);
   const grant = await post(page,'grants',{mode:'host',root,capabilities:['files','shell']});
   const worker = await post(page,'agents',{name:'Fixture worker '+Date.now(),instructions:'Execute the task using tools.',connection:provider.id,model:'fixture-tool-model',tools:['files','shell'],grants:[grant.id]});
   const lead = await post(page,'agents',{name:'Fixture lead '+Date.now(),instructions:'Delegate to the requested worker.',connection:provider.id,model:'fixture-second-model',tools:['files','shell','delegate'],grants:[grant.id]});
