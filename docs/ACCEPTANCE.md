@@ -484,3 +484,17 @@ The prior export serialized freeform prompts, tasks, incidents, grant fields and
 | `.venv/bin/python scripts/check_python.py` | PASS: 139 passed, 10 warnings in 7.58s. |
 | `.venv/bin/python scripts/check_ui.py` | PASS: 6 passed in 49.2s. |
 | GitHub Actions run `44890699258` for commit `1191d86` | PASS: completed with conclusion `success`. |
+
+## Retention preserves action evidence — 2026-11-21
+
+Contributor: **OpenAI Codex (GPT-6)**, under owner direction.
+
+The initial retention implementation deleted every event for older terminal runs, including approval decisions and action start/finish records. It now prunes only `terminal` output for completed, failed or stopped runs older than the selected period. Review, reviewed and interrupted runs are excluded. It rechecks each run status while holding the database lock immediately before deletion. Approval, action, recovery and verification events remain in the database. Deleted terminal output cannot be reconstructed; back up first when it matters.
+
+| Command / check | Actual result this session |
+| --- | --- |
+| `.venv/bin/python scripts/check_python.py tests/test_diagnostics_and_incidents.py -q` | PASS: 9 passed, 7 warnings in 0.44s. |
+| `.venv/bin/python scripts/check_python.py` | PASS: 141 passed, 10 warnings in 7.66s. |
+| `npm run build` | PASS: TypeScript and Vite build in 1.01s. |
+| `.venv/bin/python scripts/check_ui.py` | PASS: 6 passed in 1.1m. |
+| GitHub Actions for this revision | Pending push and run. |

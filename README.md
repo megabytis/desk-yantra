@@ -127,6 +127,8 @@ For local readiness checks, `GET http://127.0.0.1:8765/healthz` returns a minima
 
 The System Diagnostics export contains aggregate counts and fixed platform/readiness metadata only. It excludes prompts, run text, incident details, names, paths, provider URLs, artifact metadata, and event bodies. Inspect a downloaded export before sharing it; aggregate counts and platform details can still reveal information about your setup. The authenticated diagnostics screen itself can show private incident text and state paths.
 
+The Diagnostics retention control previews and prunes terminal output only for completed, failed or stopped runs older than 30 days. It keeps approval decisions, action start/finish records, recovery events and verification reports. Review and interrupted runs are excluded. Deleted output cannot be reconstructed; make a private backup first if you need it.
+
 ## Publishing
 
 The official source repository is `git@github.com:megabytis/desk-yantra.git`. The project remains under active development and has not passed the production release gates in `PLANNING.md`. Keep `.state`, `.env`, recordings, model weights, and logs out of commits. A GitHub Actions fixture workflow is included.

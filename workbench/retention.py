@@ -1,14 +1,14 @@
 """Log and run event retention policies."""
 from __future__ import annotations
 
-import sqlite3
 import time
-from pathlib import Path
-from typing import Any, Dict, List
+import json
+from typing import Any, Dict
 
 from . import store
 
-TERMINAL_STATUSES = {"completed", "failed", "stopped", "cancelled", "interrupted"}
+TERMINAL_STATUSES = {"completed", "failed", "stopped"}
+PRUNEABLE_KINDS = ("terminal",)
 
 
 def inspect_retention(older_than_days: int = 30, now: float | None = None) -> Dict[str, Any]:
@@ -34,7 +34,7 @@ def inspect_retention(older_than_days: int = 30, now: float | None = None) -> Di
             }
         placeholders = ",".join("?" for _ in eligible_run_ids)
         row = store.DB.execute(
-            f"SELECT count(*) FROM events WHERE run IN ({placeholders})", eligible_run_ids
+            f"SELECT count(*) FROM events WHERE run IN ({placeholders}) AND kind IN (?)", [*eligible_run_ids, *PRUNEABLE_KINDS]
         ).fetchone()
         pruneable = row[0] if row else 0
 
@@ -53,9 +53,18 @@ def prune_retention(older_than_days: int = 30, now: float | None = None) -> Dict
         return {"pruned_events": 0, "affected_runs": 0}
 
     with store.LOCK:
-        placeholders = ",".join("?" for _ in run_ids)
-        cursor = store.DB.execute(f"DELETE FROM events WHERE run IN ({placeholders})", run_ids)
+        # Recheck under the same database lock as deletion; a run may have
+        # entered review since the preview was built.
+        current_ids = []
+        for run_id in run_ids:
+            row = store.DB.execute("SELECT body FROM objects WHERE kind='runs' AND id=?", (run_id,)).fetchone()
+            if row and json.loads(row[0]).get("status") in TERMINAL_STATUSES:
+                current_ids.append(run_id)
+        if not current_ids:
+            return {"pruned_events": 0, "affected_runs": 0}
+        placeholders = ",".join("?" for _ in current_ids)
+        cursor = store.DB.execute(f"DELETE FROM events WHERE run IN ({placeholders}) AND kind IN (?)", [*current_ids, *PRUNEABLE_KINDS])
         pruned = cursor.rowcount
         store.DB.commit()
 
-    return {"pruned_events": pruned, "affected_runs": len(run_ids)}
+    return {"pruned_events": pruned, "affected_runs": len(current_ids)}

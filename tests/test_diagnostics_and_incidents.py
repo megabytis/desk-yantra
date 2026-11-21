@@ -153,8 +153,12 @@ def test_retention_inspection_and_pruning(clean_state):
     # Run 1: Old completed run (40 days old)
     old_run = {"id": "old_run", "status": "completed", "created_at": now - (40 * 86400)}
     store.put("runs", old_run)
-    store.event("old_run", "message", "old event 1")
-    store.event("old_run", "message", "old event 2")
+    store.event("old_run", "terminal", "old output 1")
+    store.event("old_run", "terminal", "old output 2")
+    store.event("old_run", "approval", {"status": "approved"})
+    store.event("old_run", "action_started", {"op": "shell"})
+    store.event("old_run", "action_finished", {"exit_status": 0})
+    store.event("old_run", "verification_contract", {"status": "verified"})
 
     # Run 2: Recent completed run (5 days old)
     recent_run = {"id": "recent_run", "status": "completed", "created_at": now - (5 * 86400)}
@@ -176,12 +180,38 @@ def test_retention_inspection_and_pruning(clean_state):
     assert prune_res["affected_runs"] == 1
 
     # Events for old run pruned
-    assert len(store.events("old_run")) == 0
+    assert [e["kind"] for e in store.events("old_run")] == ["approval", "action_started", "action_finished", "verification_contract"]
     # Events for recent run and active run preserved
     assert len(store.events("recent_run")) == 1
     assert len(store.events("active_run")) == 1
     # Run objects themselves preserved!
     assert store.get("runs", "old_run")["id"] == "old_run"
+
+
+def test_retention_keeps_review_and_interrupted_evidence(clean_state):
+    now = 1000000.0
+    for status in ("review", "interrupted", "reviewed", "running"):
+        store.put("runs", {"id": status, "status": status, "created_at": now - 40 * 86400})
+        store.event(status, "terminal", "potentially uncertain output")
+    report = retention.inspect_retention(now=now)
+    assert report["eligible_run_ids"] == []
+    assert retention.prune_retention(now=now)["pruned_events"] == 0
+
+
+def test_retention_rechecks_run_status_before_deletion(clean_state, monkeypatch):
+    now = 1000000.0
+    store.put("runs", {"id": "old", "status": "completed", "created_at": now - 40 * 86400})
+    store.event("old", "terminal", "keep during review")
+    original = retention.inspect_retention
+
+    def changed_status(*args, **kwargs):
+        preview = original(*args, **kwargs)
+        store.put("runs", {"id": "old", "status": "review", "created_at": now - 40 * 86400})
+        return preview
+
+    monkeypatch.setattr(retention, "inspect_retention", changed_status)
+    assert retention.prune_retention(now=now)["pruned_events"] == 0
+    assert len(store.events("old")) == 1
 
 
 def test_metrics_telemetry(clean_state):

@@ -171,13 +171,13 @@ export function Management({state:sourceState,page,navigate,request,refresh,sele
     <div className="retention-card">
       <div>
         <h3>Storage & Log Retention</h3>
-        <p>Desk Yantra retains run metadata indefinitely. Raw event traces from terminal runs older than 30 days can be safely pruned to reclaim storage.</p>
+        <p>Desk Yantra retains run and action evidence. Terminal output from completed, failed or stopped runs older than 30 days can be pruned to reclaim storage.</p>
         <div className="retention-info">
           <span>Eligible pruneable events: <strong>{retentionInfo?.pruneable_events_count||0}</strong> across {retentionInfo?.eligible_runs_count||0} older runs</span>
         </div>
       </div>
       <div className="button-row">
-        <button type="button" className="secondary" disabled={busy||!retentionInfo?.pruneable_events_count} onClick={pruneStaleLogs}>Prune old events</button>
+        <button type="button" className="secondary" disabled={busy||!retentionInfo?.pruneable_events_count} onClick={pruneStaleLogs}>Prune old terminal output</button>
         <button type="button" className="secondary" disabled={busy} onClick={downloadScrubbedExport}>Download scrubbed export</button>
       </div>
     </div>
