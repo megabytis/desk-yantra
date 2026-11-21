@@ -573,3 +573,15 @@ Contributor: **OpenAI Codex (GPT-6)**, under owner direction. The active plan is
 | Browser UI, real OpenAI, Arch/Hyprland computer use | NOT YET VERIFIED for this upstream baseline. `doctor` reported its built-in agent-browser unavailable until installed. |
 
 The upstream tracked tree remained clean. Do not count this as a production release or as proof of Muse feature parity.
+
+## OSS source import into `next/` — 2026-11-21
+
+Contributor: **OpenAI Codex (GPT-6)**. Imported tracked source from OpenMausBot `4e22b4d9b3ae3a9c5ed60ba90632e667e1c3a1d4` into `next/` as an unreleased development fork. Excluded `enterprise/`, upstream docs, docs app and evals; restored three announcement source paths needed by the build. Included upstream `LICENSE`, `NOTICE`, `LICENSING.md`, `third_party/` notices and original README as `UPSTREAM-README.md`. The old workbench and `.state/` were not changed. Local `next/node_modules` is an ignored symlink to dependencies already installed in the reference checkout; no second 2.4 GB install was made.
+
+| Check | Actual result |
+| --- | --- |
+| Source inventory | `next/enterprise/` absent; license and notice files present; imported source about 109 MB before build. |
+| First import build | Failed on missing announcement modules after broad archive exclusion; restored them. Next attempt reached Vite but sandbox blocked its temporary write through the dependency symlink. |
+| `NODE_OPTIONS=--max-old-space-size=4096 pnpm build` in `next/`, with approved filesystem access | PASS: TypeScript and server checks passed; Vite transformed 6056 modules and built in 44.10s. CSS and large-chunk warnings remain. |
+| Isolated fixture from `next/` | PASS: created a bot, sent `hello`, waited for `settled`, saw `hello from fake claude`; fixture exited 0 and removed its temporary state. Scripted engine only. |
+| Branding and release | NOT READY: copied UI still includes upstream names and mascot assets. `next/` is an unreleased development import. Browser UI, real OpenAI, clean install and Arch/Hyprland effects remain unverified. |
