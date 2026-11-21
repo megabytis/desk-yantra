@@ -300,10 +300,33 @@ def run_worker(run_id):
                 'verification': verification,
                 'stop_reason': stop_reason
             })
+            if verification and verification.get("outcome") == "unresolved_command_failure":
+                try:
+                    from .incidents import record_incident
+                    record_incident(
+                        f"Unresolved command failure in run {run_id}",
+                        category="command_failure",
+                        run_id=run_id,
+                        agent_id=profile["id"] if "profile" in locals() and profile else None,
+                    )
+                except Exception:
+                    pass
     except Exception as error:
+        import traceback
         event(run_id, "error", str(error))
         reason = "timeout" if isinstance(error, TimeoutError) else "tool_budget_exhausted" if "budget exhausted" in str(error).lower() else "failed"
         transition_run(run_id,('queued','running'),'failed',{'stop_reason':reason})
+        try:
+            from .incidents import record_incident
+            record_incident(
+                str(error),
+                category=reason if reason in ("timeout", "tool_budget") else None,
+                run_id=run_id,
+                agent_id=profile["id"] if "profile" in locals() and profile else None,
+                traceback_text=traceback.format_exc(),
+            )
+        except Exception:
+            pass
     finally:
         stop_hb.set()
         delete_heartbeat(run_id)

@@ -40,3 +40,46 @@
 .artifact-card-links{display:flex;align-items:center;gap:8px;margin-top:14px}
 .artifact-card-preview-btn{font-size:11px;padding:5px 10px;background:#243329;border:1px solid #3c5443;border-radius:4px;color:#c1e4cb;cursor:pointer}
 .artifact-card-preview-btn:hover{background:#2e4235}
+
+.diagnostics-panel{display:flex;flex-direction:column;gap:20px}
+.readiness-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
+.readiness-card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px 20px;display:flex;flex-direction:column;justify-content:space-between}
+.readiness-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.readiness-top strong{font-size:14px}
+.status-pill{font-size:10px;padding:3px 8px;border-radius:12px;font-weight:500}
+.pill-ok{background:#27392f;color:#c4e4d1;border:1px solid #3d5845}
+.pill-warn{background:#4a3622;color:#ffd6a5;border:1px solid #6c4f30}
+.pill-err{background:#4a2228;color:#ffb4be;border:1px solid #6c3038}
+.readiness-detail{font-size:12px;color:var(--muted);margin:4px 0 12px}
+.readiness-stats{display:flex;gap:12px;font-size:11px;color:#8fa0b2;border-top:1px solid var(--line);padding-top:10px;flex-wrap:wrap}
+.retention-card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px;display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}
+.retention-card h3{font-size:15px;margin:0 0 6px}
+.retention-card p{font-size:12px;color:var(--muted);margin:0 0 8px;max-width:600px}
+.retention-info{font-size:11px;color:#a0b2c6}
+.incident-filter-pills{display:flex;gap:8px}
+.incident-filter-pills .filter-pill{background:#191d24;border:1px solid var(--line);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;text-transform:capitalize}
+.incident-filter-pills .pill-active{background:#252e28;border-color:#4a6b56;color:#d1ebd8}
+.incidents-list{display:flex;flex-direction:column;gap:12px}
+.incident-item{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px 18px;display:flex;flex-direction:column;gap:8px}
+.incident-detected{border-left:3px solid #e08b68}
+.incident-acknowledged{border-left:3px solid #8ba3c7;opacity:.85}
+.incident-resolved{border-left:3px solid #68b88b;opacity:.7}
+.incident-header{display:flex;justify-content:space-between;align-items:center}
+.incident-tags{display:flex;align-items:center;gap:8px}
+.incident-cat-tag{font-size:9px;padding:2px 6px;border-radius:4px;font-weight:600;letter-spacing:.5px}
+.cat-crash{background:#4d1f27;color:#ff99aa;border:1px solid #73303c}
+.cat-timeout{background:#4a361e;color:#ffc482;border:1px solid #6b4e2b}
+.cat-tool_budget{background:#3b2c4d;color:#d6b3ff;border:1px solid #553e70}
+.cat-command_failure{background:#3e3820;color:#fae075;border:1px solid #615730}
+.cat-system{background:#262c36;color:#a4b7cc;border:1px solid #3a4352}
+.incident-count-tag{font-size:10px;background:#2b333e;color:#b5c4d6;padding:1px 6px;border-radius:4px}
+.incident-status-tag{font-size:10px;color:var(--muted);text-transform:capitalize}
+.incident-time{font-size:11px;color:var(--muted)}
+.incident-msg{font-size:13px;color:#e2e7ee;margin:0;font-family:monospace;word-break:break-word}
+.incident-meta{font-size:11px;color:var(--muted)}
+.incident-meta code{color:#a4c2db;background:#10141a;padding:1px 4px;border-radius:3px}
+.incident-details summary{font-size:11px;color:#8da4be;cursor:pointer}
+.incident-tb{font-size:11px;background:#10141a;padding:10px;border-radius:6px;overflow-x:auto;color:#d1d8e0}
+.incident-actions{display:flex;justify-content:flex-end;margin-top:4px}
+.incident-ack-btn{font-size:11px;padding:4px 10px;background:#252b33!important;border:1px solid #3c4654!important;color:#c9d5e3!important;border-radius:5px}
+.empty-incidents{background:var(--panel);border:1px dashed var(--line);border-radius:8px;padding:30px;text-align:center;color:var(--muted);font-size:13px}

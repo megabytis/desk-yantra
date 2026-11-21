@@ -13,7 +13,7 @@ async function api(path:string,body?:unknown){
   if(!response.ok)throw new ApiError(result.detail||'The request could not be completed',response.status);
   return result;
 }
-const pages=['Chat','Providers','Agents','Permissions','Runs','Artifacts'];
+const pages=['Chat','Providers','Agents','Permissions','Runs','Artifacts','Diagnostics'];
 function route(){const [page,id]=window.location.hash.slice(1).split('/');return {page:pages.includes(page)?page:'Chat',id:id||''};}
 function App(){
   const [state,setState]=useState<Item|null>(null);

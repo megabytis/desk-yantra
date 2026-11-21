@@ -13,7 +13,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 import httpx
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Response, Body
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -93,6 +93,16 @@ def reconcile_runs():
                 if changed:
                     reconciled.append(ident)
                     event(ident, "recovery", f"Worker lease expired (> {LEASE_TIMEOUT}s). Unresponsive worker stopped.")
+                    try:
+                        from .incidents import record_incident
+                        record_incident(
+                            f"Worker lease expired (> {LEASE_TIMEOUT}s) for run {ident}",
+                            category="crash",
+                            run_id=ident,
+                            agent_id=run.get("agent"),
+                        )
+                    except Exception:
+                        pass
     return reconciled
 
 
@@ -757,6 +767,75 @@ def artifact_text(ident: str):
         "size": size,
         "truncated": truncated,
     }
+
+
+
+
+@app.get("/api/diagnostics")
+def api_diagnostics():
+    from .diagnostics import get_diagnostics_snapshot
+    return get_diagnostics_snapshot(store.STATE)
+
+
+@app.get("/api/incidents")
+def api_incidents(status: str | None = None):
+    from .incidents import list_incidents
+    return list_incidents(status=status)
+
+
+@app.post("/api/incidents/{ident}/ack")
+def api_ack_incident(ident: str):
+    from .incidents import ack_incident
+    try:
+        return ack_incident(ident)
+    except (KeyError, ValueError):
+        raise HTTPException(status_code=404, detail="Incident not found")
+
+
+@app.post("/api/incidents/{ident}/resolve")
+def api_resolve_incident(ident: str):
+    from .incidents import resolve_incident
+    try:
+        return resolve_incident(ident)
+    except (KeyError, ValueError):
+        raise HTTPException(status_code=404, detail="Incident not found")
+
+
+@app.get("/api/export/scrubbed")
+def api_export_scrubbed():
+    from .scrubbed_export import create_scrubbed_export
+    data = create_scrubbed_export(store.STATE)
+    json_bytes = json.dumps(data, indent=2).encode("utf-8")
+    return Response(
+        content=json_bytes,
+        media_type="application/json",
+        headers={"Content-Disposition": 'attachment; filename="desk-yantra-diagnostics-export.json"'},
+    )
+
+
+@app.get("/api/retention/status")
+def api_retention_status(older_than_days: int = 30):
+    from .retention import inspect_retention
+    try:
+        return inspect_retention(older_than_days=older_than_days)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/retention/prune")
+def api_retention_prune(payload: dict = Body(default={})):
+    from .retention import prune_retention
+    days = payload.get("older_than_days", 30)
+    try:
+        return prune_retention(older_than_days=days)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/api/metrics")
+def api_metrics():
+    from .metrics import get_metrics
+    return get_metrics()
 
 
 if Path("dist").exists():

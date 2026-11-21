@@ -6,7 +6,7 @@ import {ArtifactPreviewModal} from './ArtifactPreviewModal';
 type Item = Record<string,any>;
 type Props = {state:Item;page:string;navigate:(page:string)=>void;request:(path:string,body?:unknown)=>Promise<any>;refresh:()=>Promise<void>;select:(id:string)=>void};
 const providerNames:Record<string,string>={openai:'OpenAI',anthropic:'Anthropic',gemini:'Google Gemini',openrouter:'OpenRouter',xai:'xAI',ollama:'Ollama',lmstudio:'LM Studio',compatible:'OpenAI-compatible'};
-const descriptions:Record<string,string>={Providers:'Connect local models or hosted intelligence. Your keys stay on this machine.',Agents:'Give each agent a role, a model, and a clear set of permissions.',Permissions:'Choose where work happens and what your agents may access.',Runs:'Follow work across agents, conversations, and machines.',Artifacts:'The files your agents actually produced, ready to inspect and download.'};
+const descriptions:Record<string,string>={Providers:'Connect local models or hosted intelligence. Your keys stay on this machine.',Agents:'Give each agent a role, a model, and a clear set of permissions.',Permissions:'Choose where work happens and what your agents may access.',Runs:'Follow work across agents, conversations, and machines.',Artifacts:'The files your agents actually produced, ready to inspect and download.',Diagnostics:'System readiness, structured incident tracking, log retention, and scrubbed diagnostic export.'};
 
 function Capability({name,value}:{name:string;value:unknown}) {return <span className={'capability '+(value === true?'supported':'')}>{name} {value === true?'✓':value === false?'—':'?'}</span>;}
 
@@ -25,6 +25,52 @@ export function Management({state:sourceState,page,navigate,request,refresh,sele
   const [notice,setNotice]=useState('');
   const [previewArtifact,setPreviewArtifact]=useState<Item|null>(null);
   const [search,setSearch]=useState('');
+  const [diagnostics,setDiagnostics]=useState<Item|null>(null);
+  const [incidents,setIncidents]=useState<Item[]>([]);
+  const [retentionInfo,setRetentionInfo]=useState<Item|null>(null);
+  const [incidentFilter,setIncidentFilter]=useState<'all'|'detected'|'acknowledged'|'resolved'>('all');
+  async function fetchDiagnostics(){
+    try{
+      const diag=await request('diagnostics');
+      setDiagnostics(diag);
+      const incs=await request('incidents');
+      setIncidents(incs);
+      const ret=await request('retention/status');
+      setRetentionInfo(ret);
+    }catch(_e){}
+  }
+  useEffect(()=>{if(page==='Diagnostics')void fetchDiagnostics();},[page]);
+  async function downloadScrubbedExport(){
+    try{
+      const data=await request('export/scrubbed');
+      const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement('a');
+      a.href=url;
+      a.download=`desk-yantra-diagnostics-${new Date().toISOString().slice(0,10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setNotice('Scrubbed diagnostics bundle downloaded');
+    }catch(_e){setError('Failed to download scrubbed export');}
+  }
+  async function pruneStaleLogs(){
+    if(busy)return;
+    void execute(async()=>{
+      const res=await request('retention/prune',{older_than_days:30});
+      await fetchDiagnostics();
+      return res;
+    },'Retention prune completed');
+  }
+  async function ackIncidentAction(id:string){
+    if(busy)return;
+    void execute(async()=>{
+      const res=await request(`incidents/${id}/ack`,{});
+      await fetchDiagnostics();
+      return res;
+    },'Incident marked acknowledged');
+  }
   const [agentConnection,setAgentConnection]=useState('');
   const [detectingLocal,setDetectingLocal]=useState(false);
   const [detectedEngines,setDetectedEngines]=useState<Item[]>([]);
@@ -79,8 +125,8 @@ export function Management({state:sourceState,page,navigate,request,refresh,sele
   function data(event:FormEvent<HTMLFormElement>){event.preventDefault();return new FormData(event.currentTarget);}
   function openProvider(item?:Item){setType(item?.type||'ollama');showEditor(item?{...item,kind:'provider'}:{kind:'provider'});}
   function openAgent(item?:Item){setAgentConnection(item?.connection||'');setModel(item?.model||'');showEditor(item?{...item,kind:'agent'}:{kind:'agent'});}
-  return <div className="settings-app"><aside className="settings-sidebar"><button className="settings-brand" onClick={()=>navigate('Chat')}>◈ <strong>Desk Yantra</strong></button><button className="back-chat" onClick={()=>navigate('Chat')}>← Back to conversation</button><small>WORKSPACE</small><nav aria-label="Workspace navigation">{['Agents','Runs','Artifacts'].map(name=><button key={name} className={page===name?'nav-active':''} onClick={()=>{navigate(name);setEditor(null);}}>{name}{name==='Runs'&&pending>0&&<span>{pending}</span>}</button>)}</nav><small>SETTINGS</small><nav aria-label="Settings navigation">{['Providers','Permissions'].map(name=><button key={name} className={page===name?'nav-active':''} onClick={()=>{navigate(name);setEditor(null);}}>{name==='Providers'?'Providers & models':'Computer access'}</button>)}</nav><div className="machine-card"><span className={state.capabilities.error?'offline-dot':'online-dot'}/><div><strong>{state.capabilities.machine||'Companion offline'}</strong><small>{state.capabilities.session||'Local execution'}</small></div></div></aside>
-  <main className="settings-main"><header className="settings-header"><div><div className="eyebrow">PERSONAL WORKBENCH / {page.toUpperCase()}</div><h1>{page==='Permissions'?'Computer access':page==='Providers'?'Providers & models':page}</h1><p>{descriptions[page]}</p></div>{page==='Providers'&&<div className="button-row"><button type="button" className="secondary" disabled={detectingLocal||busy} onClick={detectLocal}>{detectingLocal?'Scanning…':'🔍 Detect local engines'}</button><button className="primary" onClick={()=>openProvider()}>＋ Add connection</button></div>}{page==='Agents'&&<button className="primary" onClick={()=>openAgent()}>＋ Create agent</button>}{page==='Permissions'&&<button className="primary" onClick={()=>showEditor({kind:'grant'})}>＋ Add workspace</button>}</header>
+  return <div className="settings-app"><aside className="settings-sidebar"><button className="settings-brand" onClick={()=>navigate('Chat')}>◈ <strong>Desk Yantra</strong></button><button className="back-chat" onClick={()=>navigate('Chat')}>← Back to conversation</button><small>WORKSPACE</small><nav aria-label="Workspace navigation">{['Agents','Runs','Artifacts'].map(name=><button key={name} className={page===name?'nav-active':''} onClick={()=>{navigate(name);setEditor(null);}}>{name}{name==='Runs'&&pending>0&&<span>{pending}</span>}</button>)}</nav><small>SETTINGS</small><nav aria-label="Settings navigation">{['Providers','Permissions','Diagnostics'].map(name=><button key={name} className={page===name?'nav-active':''} onClick={()=>{navigate(name);setEditor(null);}}>{name==='Providers'?'Providers & models':name==='Permissions'?'Computer access':'System diagnostics'}</button>)}</nav><div className="machine-card"><span className={state.capabilities.error?'offline-dot':'online-dot'}/><div><strong>{state.capabilities.machine||'Companion offline'}</strong><small>{state.capabilities.session||'Local execution'}</small></div></div></aside>
+  <main className="settings-main"><header className="settings-header"><div><div className="eyebrow">PERSONAL WORKBENCH / {page.toUpperCase()}</div><h1>{page==='Permissions'?'Computer access':page==='Providers'?'Providers & models':page==='Diagnostics'?'System diagnostics':page}</h1><p>{descriptions[page]}</p></div>{page==='Providers'&&<div className="button-row"><button type="button" className="secondary" disabled={detectingLocal||busy} onClick={detectLocal}>{detectingLocal?'Scanning…':'🔍 Detect local engines'}</button><button className="primary" onClick={()=>openProvider()}>＋ Add connection</button></div>}{page==='Agents'&&<button className="primary" onClick={()=>openAgent()}>＋ Create agent</button>}{page==='Permissions'&&<button className="primary" onClick={()=>showEditor({kind:'grant'})}>＋ Add workspace</button>}{page==='Diagnostics'&&<div className="button-row"><button type="button" className="secondary" disabled={busy} onClick={downloadScrubbedExport}>⬇ Export scrubbed bundle</button><button type="button" className="primary" disabled={busy} onClick={fetchDiagnostics}>{busy?'Working…':'↻ Refresh health'}</button></div>}</header>
   <SetupProgress state={sourceState} navigate={navigate}/>
   {(page==='Providers'||page==='Agents')&&<div className="archive-toolbar"><label><input type="checkbox" checked={showArchived} onChange={event=>setShowArchived(event.target.checked)}/>Show archived {page==='Providers'?'connections':'agents'}</label><small>Archiving prevents new tasks. Running work and its history stay available.</small></div>}
   {page==='Providers'&&detectedEngines.length>0&&<div className="detected-engines-panel"><h3>Detected local LLM engines</h3><p>These local servers were detected listening on loopback ports:</p><div className="detected-grid">{detectedEngines.map((eng:Item)=><div className="detected-card" key={eng.url}><div><strong>{eng.name}</strong><span className="subtle-tag">{eng.latency_ms} ms</span><p className="endpoint">{eng.url}</p><small>{eng.model_count} model(s){eng.models?.length?`: ${eng.models.slice(0,3).join(', ')}${eng.models.length>3?'…':''}`:''}</small></div><button type="button" className="primary" onClick={()=>useDetectedEngine(eng)}>Use this engine →</button></div>)}</div></div>}
@@ -97,6 +143,70 @@ export function Management({state:sourceState,page,navigate,request,refresh,sele
   {page==='Permissions'&&<><div className="capability-overview"><article><span className="subtle-tag">ISOLATED</span><h2>Docker sandbox</h2><p>{state.capabilities.sandbox?.ready?'Ready. Files, commands, and Chromium run inside a separate container.':state.capabilities.sandbox?.reason||'Companion has not reported sandbox readiness.'}</p></article><article><span className="subtle-tag">THIS COMPUTER</span><h2>{state.capabilities.machine||'Local companion'}</h2><p>{state.capabilities.session==='wayland'?'Wayland desktop':'Desktop session'} · {state.capabilities.screen?'Screen capture available':'Screen capture unavailable'} · {state.capabilities.input?'Input available':'Input unavailable'}</p><details><summary>Desktop integration details</summary><p>{state.capabilities.screen_detail}</p><p>{state.capabilities.input_detail}</p><p>{state.capabilities.mouse_detail}</p></details></article></div><div className="section-label"><h2>Authorized workspaces</h2><span>{state.grants.filter((item:Item)=>!item.revoked).length} active</span></div>{state.grants.map((item:Item)=><article className={'workspace-card '+(item.revoked?'revoked':'')} key={item.id}><div><span className="subtle-tag">{item.mode}</span><h3>{item.mode==='sandbox'?'Isolated workspace':item.root}</h3><p>{item.capabilities.join(' · ')}{item.shared&&` · Read-only share: ${item.shared}`}{item.allowed_domains?.length>0&&` · Browser domains: ${item.allowed_domains.join(', ')}`}</p></div><button disabled={busy||item.revoked} onClick={()=>void execute(()=>request(`grants/${item.id}/revoke`,{}),'Grant revoked; active work stopped')}>{item.revoked?'Revoked':'Revoke access'}</button></article>)}</>}
   {page==='Runs'&&<><div className="list-toolbar"><input aria-label="Search runs" placeholder="Search tasks, models, or status…" value={search} onChange={event=>setSearch(event.target.value)}/><span>{state.runs.length} runs</span></div><div className="run-table">{[...state.runs].filter((item:Item)=>`${item.task} ${item.model} ${item.status}`.toLowerCase().includes(search.toLowerCase())).sort((left:Item,right:Item)=>right.created-left.created).map((item:Item)=><button data-run={item.id} key={item.id} onClick={()=>{select(item.id);navigate('Chat');}}><div><strong>{item.task}</strong><small>{state.agents.find((agent:Item)=>agent.id===item.agent)?.name} · {item.model}{item.parent?' · Delegated task':''}{item.stop_reason?` · ${item.stop_reason.replace('_',' ')}`:''}</small></div><span className={'run-status status-'+item.status}>{item.status}</span><time>{new Date(item.created*1000).toLocaleDateString()}</time><span>↗</span></button>)}</div>{!state.runs.length&&<div className="empty-card"><h2>Your work will appear here</h2><p>Start a conversation to create a run. It continues when you close the tab.</p><button onClick={()=>navigate('Chat')}>Start a conversation</button></div>}</>}
   {page==='Artifacts'&&<div className="artifact-grid">{state.artifacts.map((item:Item)=><article key={item.id} className="artifact-card">{item.name.endsWith('.png')?<img src={`/api/artifacts/${item.id}/preview`} alt={item.name}/>:<div className="file-symbol">▤</div>}<h3>{item.name}</h3><small>Run {item.run.slice(0,8)}</small><div className="artifact-card-links"><button type="button" className="artifact-card-preview-btn" onClick={()=>setPreviewArtifact(item)}>Preview</button><a href={`/api/artifacts/${item.id}`} download>Download file ↓</a></div></article>)}{!state.artifacts.length&&<div className="empty-card"><h2>No files yet</h2><p>Ask an agent to create a file. Its actual output will be saved here.</p></div>}</div>}
+  {page==='Diagnostics'&&<div className="diagnostics-panel">
+    <div className="section-label"><h2>System readiness</h2><span>Host health & runtime</span></div>
+    <div className="readiness-grid">
+      <div className="readiness-card">
+        <div className="readiness-top"><strong>SQLite Database</strong><span className={'status-pill '+(diagnostics?.database?.ready?'pill-ok':'pill-err')}>{diagnostics?.database?.ready?'Ready':'Error'}</span></div>
+        <p className="readiness-detail">Integrity: {diagnostics?.database?.integrity||'unknown'} · Schema v{diagnostics?.database?.schema_version||1}</p>
+        <div className="readiness-stats"><span>{diagnostics?.database?.objects_count||0} objects</span><span>{diagnostics?.database?.events_count||0} events</span><span>{Math.round((diagnostics?.database?.size_bytes||0)/1024)} KB</span></div>
+      </div>
+      <div className="readiness-card">
+        <div className="readiness-top"><strong>Companion Process</strong><span className={'status-pill '+(diagnostics?.companion?.ready?'pill-ok':'pill-warn')}>{diagnostics?.companion?.ready?'Online':'Offline'}</span></div>
+        <p className="readiness-detail">Loopback port 8766 · {state.capabilities?.session||'Local execution'}</p>
+        <div className="readiness-stats"><span>Screen: {state.capabilities?.screen?'Yes':'No'}</span><span>Input: {state.capabilities?.input?'Yes':'No'}</span></div>
+      </div>
+      <div className="readiness-card">
+        <div className="readiness-top"><strong>Docker Sandbox</strong><span className={'status-pill '+(diagnostics?.docker?.ready?'pill-ok':'pill-warn')}>{diagnostics?.docker?.ready?'Ready':diagnostics?.docker?.available?'Inactive':'Unavailable'}</span></div>
+        <p className="readiness-detail">{diagnostics?.docker?.status||diagnostics?.docker?.reason||'Docker unavailable'}</p>
+        <div className="readiness-stats"><span>Container isolation</span></div>
+      </div>
+      <div className="readiness-card">
+        <div className="readiness-top"><strong>Host & Workload</strong><span className="status-pill pill-ok">Active</span></div>
+        <p className="readiness-detail">Uptime: {Math.round((diagnostics?.system?.uptime_seconds||0)/60)}m · PID {diagnostics?.system?.pid||'—'}</p>
+        <div className="readiness-stats"><span>{diagnostics?.workload?.active_runs_count||0} active runs</span><span>{diagnostics?.storage?.artifacts_count||0} artifacts ({Math.round((diagnostics?.storage?.artifacts_bytes||0)/1024)} KB)</span></div>
+      </div>
+    </div>
+
+    <div className="retention-card">
+      <div>
+        <h3>Storage & Log Retention</h3>
+        <p>Desk Yantra retains run metadata indefinitely. Raw event traces from terminal runs older than 30 days can be safely pruned to reclaim storage.</p>
+        <div className="retention-info">
+          <span>Eligible pruneable events: <strong>{retentionInfo?.pruneable_events_count||0}</strong> across {retentionInfo?.eligible_runs_count||0} older runs</span>
+        </div>
+      </div>
+      <div className="button-row">
+        <button type="button" className="secondary" disabled={busy||!retentionInfo?.pruneable_events_count} onClick={pruneStaleLogs}>Prune old events</button>
+        <button type="button" className="secondary" disabled={busy} onClick={downloadScrubbedExport}>Download scrubbed export</button>
+      </div>
+    </div>
+
+    <div className="section-label">
+      <h2>Structured incidents & failures</h2>
+      <div className="incident-filter-pills">
+        {(['all','detected','acknowledged','resolved'] as const).map(f=><button key={f} type="button" className={'filter-pill '+(incidentFilter===f?'pill-active':'')} onClick={()=>setIncidentFilter(f)}>{f} {f==='all'?`(${incidents.length})`:f==='detected'?`(${incidents.filter(i=>i.status==='detected').length})`:''}</button>)}
+      </div>
+    </div>
+
+    <div className="incidents-list">
+      {incidents.filter(i=>incidentFilter==='all'||i.status===incidentFilter).map((item:Item)=><div key={item.id} className={'incident-item incident-'+item.status}>
+        <div className="incident-header">
+          <div className="incident-tags">
+            <span className={'incident-cat-tag cat-'+item.category}>{item.category.toUpperCase()}</span>
+            {item.count>1&&<span className="incident-count-tag">×{item.count}</span>}
+            <span className={'incident-status-tag status-'+item.status}>{item.status}</span>
+          </div>
+          <span className="incident-time">{new Date(item.last_seen_at*1000).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'})}</span>
+        </div>
+        <p className="incident-msg">{item.message}</p>
+        {item.latest_run_id&&<div className="incident-meta">Run: <code>{item.latest_run_id}</code></div>}
+        {item.traceback&&<details className="incident-details"><summary>View traceback</summary><pre className="incident-tb">{item.traceback}</pre></details>}
+        {item.status==='detected'&&<div className="incident-actions"><button type="button" className="incident-ack-btn" disabled={busy} onClick={()=>ackIncidentAction(item.id)}>Acknowledge</button></div>}
+      </div>)}
+      {incidents.filter(i=>incidentFilter==='all'||i.status===incidentFilter).length===0&&<div className="empty-incidents"><p>No failure incidents found for this filter. System running smoothly.</p></div>}
+    </div>
+  </div>}
   </main>
   {previewArtifact&&<ArtifactPreviewModal artifact={previewArtifact} request={request} onClose={()=>setPreviewArtifact(null)}/>}
   {editor&&<div className="modal-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget&&!busy)setEditor(null);}}><section ref={dialogRef} className="editor-modal" role="dialog" aria-modal="true" aria-labelledby="editor-title" tabIndex={-1}><div className="editor-heading"><div><small>{editor.id?'EDIT':'NEW'}</small><h2 id="editor-title">{editor.kind==='provider'?'Model connection':editor.kind==='agent'?'Agent profile':'Workspace access'}</h2></div><button aria-label="Close editor" disabled={busy} onClick={()=>setEditor(null)}>×</button></div>

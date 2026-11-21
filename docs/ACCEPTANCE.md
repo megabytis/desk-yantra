@@ -450,5 +450,23 @@ Contributor: **Antigravity (Gemini 3.8 Flash)**, under owner direction. Referenc
 | `.venv/bin/python scripts/check_ui.py` | PASS: 6 passed in 49.0s. |
 | GitHub Actions run `44886013114` for commit `82a9200` | PASS: completed with conclusion `success`. |
 
+## Structured incident reporting, diagnostics, log retention, metrics, and scrubbed export
 
+Contributor: **Antigravity (Gemini 3.8 Flash)**, under owner direction. References: `hermes-agent`, `agent-zero`, and `OpenHands`.
+- Structured incident reporting: `workbench/incidents.py` provides failure category classification (`timeout`, `tool_budget`, `auth`, `rate_limit`, `crash`, `command_failure`, `system`), token/duration normalization, signature deduplication, occurrence counters, auto-reopening on recurrence, and acknowledgment/resolve workflow.
+- Crash & failure auto-reporting: `workbench/worker.py` and `workbench/server.py` automatically catalog unhandled exceptions, worker crashes, lease expirations, timeouts, and tool budget exhaustions into structured incidents.
+- Comprehensive readiness diagnostics: `workbench/diagnostics.py` provides non-blocking readiness checks for SQLite database (integrity, schema version, size, object counts), companion service (port 8766 health check), Docker sandbox daemon availability, and system workload/uptime.
+- Log retention policies: `workbench/retention.py` inspects and prunes raw event traces for terminal runs older than 30 days while permanently preserving run headers, verification summaries, and audit trail.
+- Scrubbed diagnostic export: `workbench/scrubbed_export.py` generates sanitized export bundles for bug reporting, strictly redacting all API keys, private launch tokens, encryption keys, and sanitizing user home paths (`/home/<user>`).
+- Server endpoints: `workbench/server.py` adds `GET /api/diagnostics`, `GET /api/incidents`, `POST /api/incidents/{ident}/ack`, `POST /api/incidents/{ident}/resolve`, `GET /api/export/scrubbed`, `GET /api/retention/status`, `POST /api/retention/prune`, and `GET /api/metrics`.
+- Frontend UI: `web/Management.tsx` and `web/management.css` add a System Diagnostics tab with a 4-card readiness grid, storage retention prune action, 1-click scrubbed export download, and structured incident ledger with status filter pills.
+- Test coverage: `tests/test_diagnostics_and_incidents.py` adds 6 tests verifying incident classification, normalization, deduplication, diagnostics snapshots, strict scrubbed export redaction, retention pruning, metrics telemetry, and authenticated API endpoints.
 
+| Command / check | Actual result this session |
+| --- | --- |
+| `.venv/bin/python scripts/check_python.py tests/test_diagnostics_and_incidents.py -q` | PASS: 6 passed in 0.44s. |
+| `.venv/bin/python tests/browser_probe.py` | PASS: local Chromium navigation, fill, click, takeover, screenshot, file creation in 2.06s. |
+| `.venv/bin/python tests/browser_network_probe.py` | PASS: redirect/resource/WebSocket blocked, allowed page loaded in 1.07s. |
+| `npm run build` | PASS: TypeScript and Vite production bundle with 0 errors in 989ms. |
+| `.venv/bin/python scripts/check_python.py` | PASS: 138 passed, 10 warnings in 7.82s. |
+| `.venv/bin/python scripts/check_ui.py` | PASS: 6 passed in 49.1s. |
