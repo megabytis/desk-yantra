@@ -514,4 +514,4 @@ The first full browser run caught the expected failing-test step in the repair f
 | `npm run build` | PASS: TypeScript and Vite build in 1.89s. |
 | `.venv/bin/python scripts/check_ui.py` | Initial run: 5 passed, 1 failed; fixture repair's pre-edit failing test was classified as unresolved. |
 | `.venv/bin/python scripts/check_ui.py tests/ui/journey.spec.ts` | PASS: 1 passed in 24.3s after correction. |
-| GitHub Actions for this revision | Pending push and run. |
+| GitHub Actions run `44894738637` for commit `01a6069` | PASS: completed with conclusion `success`. |
