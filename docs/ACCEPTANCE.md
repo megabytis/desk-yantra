@@ -281,4 +281,14 @@ Contributor: **OpenAI Codex (GPT-6)**, under owner direction. `sandbox/browser_s
 | `.venv/bin/python scripts/check_ui.py` | PASS: 5 passed in 50.9s. |
 | `docker build -t paw-sandbox:local sandbox` | PASS: image built from the updated browser service. |
 
+## Pairing attempt throttling — 2026-11-21
+
+Contributor: **OpenAI Codex (GPT-6)**, under owner direction. `workbench/server.py` limits each client to eight failed launch-token attempts in a rolling sixty-second window. Further attempts, including a correct token during the window, return HTTP 429 with `Retry-After`; expiry or a successful login clears the record. `tests/test_security.py` checks denial, expiry and another client's independent access. The guard is in memory in the single loopback app process; it does not establish a distributed or proxy-aware rate limit.
+
+| Command / check | Actual result this session |
+| --- | --- |
+| `.venv/bin/python scripts/check_python.py tests/test_security.py -q` | PASS: 7 passed, 1 warning in 1.45s. |
+| `.venv/bin/python scripts/check_python.py` | PASS: 103 passed, 3 warnings in 11.16s. |
+| `.venv/bin/python scripts/check_ui.py` | PASS: 5 passed in 1.2m. |
+
 

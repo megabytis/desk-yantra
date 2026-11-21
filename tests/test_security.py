@@ -29,6 +29,27 @@ def test_logout_clears_cookie():
     assert 'paw=""' in cookie_header or "Max-Age=0" in cookie_header
 
 
+def test_pairing_failed_attempts_are_throttled_and_expire(monkeypatch):
+    now = [1000.0]
+    monkeypatch.setattr(server.time, "monotonic", lambda: now[0])
+    server._login_failures.clear()
+    client = TestClient(server.app)
+    try:
+        for _ in range(server.LOGIN_FAILURE_LIMIT):
+            response = client.post("/api/login", json={"token": "wrong"})
+            assert response.status_code == 401
+        blocked = client.post("/api/login", json={"token": store.current_token()})
+        assert blocked.status_code == 429
+        assert blocked.headers["retry-after"] == str(server.LOGIN_WINDOW_SECONDS)
+        assert server.login_attempt("another-client", True) == 0
+        now[0] += server.LOGIN_WINDOW_SECONDS
+        allowed = client.post("/api/login", json={"token": store.current_token()})
+        assert allowed.status_code == 200
+        assert not server._login_failures
+    finally:
+        server._login_failures.clear()
+
+
 def test_rotate_token():
     client = TestClient(server.app)
     old_token = store.TOKEN

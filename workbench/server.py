@@ -8,6 +8,7 @@ import sys
 import time
 import threading
 import uuid
+from collections import deque
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -24,6 +25,29 @@ from .store import STATE, CIPHER, all_objects, event, events, get, put, redact, 
 
 WORKERS = {}
 MAX_REQUEST_BODY = 10 * 1024 * 1024
+LOGIN_FAILURE_LIMIT = 8
+LOGIN_WINDOW_SECONDS = 60
+_login_failures = {}
+_login_lock = threading.Lock()
+
+
+def login_attempt(client: str, valid: bool) -> int:
+    """Return seconds until this client may retry; count only failed attempts."""
+    now = time.monotonic()
+    with _login_lock:
+        for key, failures in list(_login_failures.items()):
+            while failures and now - failures[0] >= LOGIN_WINDOW_SECONDS:
+                failures.popleft()
+            if not failures:
+                _login_failures.pop(key, None)
+        failures = _login_failures.get(client)
+        if failures and len(failures) >= LOGIN_FAILURE_LIMIT:
+            return max(1, int(LOGIN_WINDOW_SECONDS - (now - failures[0]) + 0.999))
+        if valid:
+            _login_failures.pop(client, None)
+        else:
+            _login_failures.setdefault(client, deque()).append(now)
+    return 0
 
 
 @asynccontextmanager
@@ -115,8 +139,12 @@ async def security(request: Request, call_next):
 
 
 @app.post("/api/login")
-def login(body: dict):
-    if not secrets.compare_digest(str(body.get("token", "")), store.current_token()):
+def login(body: dict, request: Request):
+    valid = secrets.compare_digest(str(body.get("token", "")), store.current_token())
+    retry_after = login_attempt(request.client.host if request.client else "unknown", valid)
+    if retry_after:
+        raise HTTPException(429, "Too many pairing attempts", headers={"Retry-After": str(retry_after)})
+    if not valid:
         raise HTTPException(401, "Invalid launch token")
     response = JSONResponse({"ok": True})
     response.set_cookie("paw", store.current_token(), httponly=True, samesite="strict")

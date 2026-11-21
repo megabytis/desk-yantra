@@ -14,7 +14,7 @@ npm run build
 uv run python -m workbench
 ```
 
-Open http://127.0.0.1:8765 and enter the launch token printed in your terminal. Both web service (8765) and companion (8766) bind only to loopback. Keep the launcher running. Closing a browser tab does not stop runs. To stop all active work locally:
+Open http://127.0.0.1:8765 and enter the launch token printed in your terminal. Both web service (8765) and companion (8766) bind only to loopback. After eight incorrect pairing attempts from the same client within one minute, wait for the `Retry-After` interval before trying again. Keep the launcher running. Closing a browser tab does not stop runs. To stop all active work locally:
 
 ```sh
 uv run python -m workbench stop
