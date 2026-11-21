@@ -256,7 +256,14 @@ class Handler(BaseHTTPRequestHandler):
         except Exception as error:
             result = {"error": "Browser request or redirect blocked by workspace network policy" if policy["blocked"] else str(error)}
             try:
-                page = get_active_page()
+                if page and not page.is_closed():
+                    page.close()
+                new_page = browser_state["context"].new_page()
+                if 0 <= browser_state["active_index"] < len(browser_state["pages"]):
+                    browser_state["pages"][browser_state["active_index"]] = new_page
+                else:
+                    browser_state["pages"] = [new_page]
+                    browser_state["active_index"] = 0
             except Exception:
                 pass
             self.send_response(400)
