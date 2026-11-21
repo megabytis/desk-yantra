@@ -291,4 +291,16 @@ Contributor: **OpenAI Codex (GPT-6)**, under owner direction. `workbench/server.
 | `.venv/bin/python scripts/check_python.py` | PASS: 103 passed, 3 warnings in 11.16s. |
 | `.venv/bin/python scripts/check_ui.py` | PASS: 5 passed in 1.2m. |
 
+## Provider API-key replacement and removal — 2026-11-21
+
+Contributor: **OpenAI Codex (GPT-6)**, under owner direction. `workbench/server.py` now accepts an explicit `remove_key` action on an existing connection, rejects a simultaneous replacement key, and leaves a blank key field as “keep saved key.” Credential changes invalidate previous discovery/inference health and account-discovered model IDs while preserving manual/catalog IDs for the same endpoint. Connection IDs and historical run records remain stable. The provider editor exposes the removal control; its browser test checks that the key is absent after reload. Current encrypted state is updated, but older private backups or SQLite history may still contain the previous ciphertext.
+
+| Command / check | Actual result this session |
+| --- | --- |
+| `.venv/bin/python scripts/check_python.py tests/test_provider_health.py -q` | PASS: 4 passed in 4.97s after the final backend change. |
+| `npm run build` | PASS: TypeScript and Vite production bundle. |
+| `.venv/bin/python scripts/check_ui.py tests/ui/settings.spec.ts` | PASS: 2 passed in 9.2s. |
+| `.venv/bin/python scripts/check_python.py` | PASS: 104 passed, 3 warnings in 8.87s. |
+| `.venv/bin/python scripts/check_ui.py` | PASS: 5 passed in 1.2m. |
+
 

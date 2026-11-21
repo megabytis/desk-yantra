@@ -185,8 +185,19 @@ def save_provider(body: dict):
     if parsed.scheme not in ("http", "https") or parsed.username or parsed.password or parsed.query:
         raise ValueError("Use an HTTP endpoint without embedded credentials or query parameters")
     previous = get("providers", body["id"]) if body.get("id") else {}
-    unchanged=previous.get('type')==kind and previous.get('url')==url and not body.get('key')
-    provider = {"id": previous.get("id", str(uuid.uuid4())), "name": body["name"], "type": kind, "url": url, "secret": CIPHER.encrypt(body["key"].encode()).decode() if body.get("key") else previous.get("secret", ""), "models": previous.get("models", []) if unchanged else [],"last_test":previous.get('last_test') if unchanged else None,"last_discovery":previous.get('last_discovery') if unchanged else None,"archived":previous.get('archived',False)}
+    remove_key = body.get("remove_key", False)
+    if not isinstance(remove_key, bool):
+        raise ValueError("remove_key must be a boolean")
+    key = body.get("key") or ""
+    if remove_key and key:
+        raise ValueError("Choose either a replacement key or remove the saved key")
+    if remove_key and not previous:
+        raise ValueError("Only an existing connection can have a saved key removed")
+    secret = "" if remove_key else CIPHER.encrypt(key.encode()).decode() if key else previous.get("secret", "")
+    same_endpoint = previous.get("type") == kind and previous.get("url") == url
+    unchanged = same_endpoint and secret == previous.get("secret", "")
+    models = previous.get("models", []) if unchanged else [item for item in previous.get("models", []) if item.get("source") in ("manual", "catalog")] if same_endpoint else []
+    provider = {"id": previous.get("id", str(uuid.uuid4())), "name": body["name"], "type": kind, "url": url, "secret": secret, "models": models,"last_test":previous.get('last_test') if unchanged else None,"last_discovery":previous.get('last_discovery') if unchanged else None,"archived":previous.get('archived',False)}
     return public(put("providers", provider))
 
 

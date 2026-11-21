@@ -28,6 +28,8 @@ uv run python -m workbench stop
 
 Archive unused agents or connections from their settings cards. This prevents new tasks while preserving running work, credentials, and history. Enable **Show archived** to restore them. An archived default connection must be restored or replaced before new tasks can use it.
 
+Edit a connection to replace its API key, or select **Remove saved API key from this connection** to clear it. Blank key input keeps the existing key. Credential changes clear prior health checks and discovered model IDs; manual and catalog IDs stay on the same endpoint. Existing run records keep the connection ID and model name. Removing a key updates current state but cannot erase old copies from private backups or SQLite history.
+
 After a completed task, send a follow-up in the conversation composer. Prior results remain attached to the conversation; the next task gets its own run history and fresh approvals. Interrupted tasks require review before starting replacement work. A run finishing does not establish task correctness: the interface flags an unresolved last-command failure, and final model messages are displayed alongside actual tool evidence. One bounded evidence review lets an agent correct a premature conclusion while preserving tool budgets and approvals.
 
 OpenAI, Anthropic, Gemini, OpenRouter, xAI, Ollama, LM Studio and compatible APIs have discovery adapters. Unknown model capabilities are explicitly unknown. Keys are encrypted at rest with a local mode-0600 key. This protects accidental database disclosure, not compromise of the Linux account. Local models require no paid account. Ollama uses `/api/tags` for installed models and `/v1` for inference. The model must support tool calling for agent work.

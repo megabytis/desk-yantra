@@ -90,3 +90,31 @@ def test_inference_check_records_latency_and_redacted_failure(monkeypatch):
     assert saved["last_test"]["ok"] is False
     assert "fixture-health-key" not in saved["last_test"]["message"]
     assert "[REDACTED]" in saved["last_test"]["message"]
+
+
+def test_key_rotation_and_removal_preserve_connection_history():
+    provider = connection()
+    ident = provider["id"]
+    put("runs", {"id": str(uuid.uuid4()), "connection": ident, "model": "manual-only", "status": "completed"})
+    provider["last_test"] = {"ok": True, "model": "manual-only"}
+    provider["last_discovery"] = {"ok": True, "count": 1}
+    provider["models"].append({"id": "account-discovered", "source": "discovered"})
+    put("providers", provider)
+    original_secret = provider["secret"]
+
+    rotated = server.save_provider({"id": ident, "name": "Fixture health", "type": "compatible", "url": provider["url"], "key": "new-secret"})
+    assert rotated["id"] == ident and rotated["has_key"] is True
+    assert "secret" not in rotated
+    assert get("providers", ident)["secret"] != original_secret
+    assert rotated["last_test"] is None and rotated["last_discovery"] is None
+    assert [item["id"] for item in rotated["models"]] == ["manual-only"]
+
+    with pytest.raises(ValueError, match="either a replacement key or remove"):
+        server.save_provider({"id": ident, "name": "Fixture health", "type": "compatible", "url": provider["url"], "key": "both", "remove_key": True})
+    removed = server.save_provider({"id": ident, "name": "Fixture health", "type": "compatible", "url": provider["url"], "remove_key": True})
+    assert removed["id"] == ident and removed["has_key"] is False
+    assert get("providers", ident)["secret"] == ""
+    assert [item["id"] for item in removed["models"]] == ["manual-only"]
+    with pytest.raises(ValueError, match="changed during the check"):
+        server.record_provider_check(provider, "last_test", {"ok": True})
+    assert any(run.get("connection") == ident for run in server.all_objects("runs"))

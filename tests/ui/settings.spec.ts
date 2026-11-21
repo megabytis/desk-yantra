@@ -64,6 +64,14 @@ test('settings: edit connections without returning keys and edit agent instructi
   const restored=await page.evaluate(()=>fetch('/api/state').then(response=>response.json()));
   expect(restored.providers.find((item:any)=>item.id===provider.id).has_key).toBe(true);
   expect(restored.runs).toEqual(state.runs);
+  await page.getByRole('button',{name:'Edit connection',exact:true}).click();
+  await page.getByLabel('Remove saved API key from this connection').check();
+  await page.getByRole('button',{name:'Save connection',exact:true}).click();
+  await page.reload();
+  await expect(page.locator('.connection-card').filter({hasText:name+' renamed'})).toContainText('No API key');
+  const afterRemoval=await page.evaluate(()=>fetch('/api/state').then(response=>response.json()));
+  expect(afterRemoval.providers.find((item:any)=>item.id===provider.id).has_key).toBe(false);
+  expect(afterRemoval.runs).toEqual(state.runs);
 });
 
 test('settings: failed model refresh keeps existing models and explains the failure',async({page})=>{
