@@ -92,7 +92,7 @@ describe("openmausbot pair", () => {
     expect(printed()).toMatch(new RegExp(`Pairing code {3}${code} {3}works once, until .+ · everything`));
     expect(printed()).toContain(`Link           ${advertisedOrigin}/pair#code=${code}`);
     expect(printed()).toMatch(/[▀▄█]/);
-    expect(printed()).toContain("For a phone (chat and approvals only)   openmausbot pair --phone");
+    expect(printed()).toContain("For a phone (chat and approvals only)   desk-yantra pair --phone");
     expect(printed()).not.toContain("doesn't reach");
   });
 
@@ -127,7 +127,7 @@ describe("openmausbot pair", () => {
     });
     expect(await runPair(options)).toBe(0);
     expect(printed()).toContain(`http://127.0.0.1:${options.port}/pair#code=${code}`);
-    expect(printed()).toContain("pick a way in first: openmausbot serve --help");
+    expect(printed()).toContain("pick a way in first: desk-yantra serve --help");
     expect(printed()).not.toMatch(/[▀▄█]/);
   });
 
@@ -145,7 +145,7 @@ describe("openmausbot pair", () => {
     const failure = await runPair(options).then(() => null, (error: unknown) => error);
     expect(failure).toBeInstanceOf(Error);
     const message = (failure as Error).message;
-    expect(message).toContain("The OpenMausBot desktop app runs this server");
+    expect(message).toContain("The Desk Yantra desktop app runs this server");
     expect(message).toContain("Settings → Phone & devices");
     // A terminal `serve` would not get the keys the app keeps in its own credential store, so it is not offered.
     expect(message).not.toContain("openmausbot serve");
@@ -155,7 +155,7 @@ describe("openmausbot pair", () => {
   it("says how to start a server when none runs", async () => {
     fetchMock.mockImplementation(async () => { throw new Error("offline"); });
     expect(await runPair(options)).toBe(1);
-    expect(console.error).toHaveBeenCalledWith(expect.stringContaining("No MausBot server is running here. Start it: openmausbot serve"));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining("No Desk Yantra server is running here. Start it: desk-yantra serve"));
   });
 });
 
@@ -178,7 +178,7 @@ describe("the phone-app link `openmausbot pair --phone android` scans", () => {
     expect(await runPair({ ...options, phone: "android", publicUrl: explicitOrigin })).toBe(0);
     expect(printed()).not.toContain("openmausbot://");
     expect(printed()).not.toContain(credential);
-    expect(printed()).toContain("scan this with the MausBot app");
+    expect(printed()).toContain("scan this with the Desk Yantra app");
   });
 
   it("keeps a proxy path in the web link", async () => {

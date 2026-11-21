@@ -363,7 +363,7 @@ async function mintPairing(port: number, options: { label?: string; client?: boo
 /** Never asks anything: the running server's own address (its routes) goes in the link. */
 export async function runPair(options: CliOptions): Promise<number> {
   if (!(await serverUp(options.port))) {
-    console.error(`No MausBot server is running here. Start it: ${cliCommand("serve")}${options.port !== 8799 ? ` (or name its port: --port ${options.port})` : ""}`);
+    console.error(`No Desk Yantra server is running here. Start it: ${cliCommand("serve")}${options.port !== 8799 ? ` (or name its port: --port ${options.port})` : ""}`);
     return 1;
   }
   const advertised = await api(options.port, "/api/auth/pairing").catch(() => ({ status: 0, body: {} as any }));
@@ -419,9 +419,9 @@ export async function runSessions(options: CliOptions): Promise<number> {
 export async function runStatus(options: CliOptions, io: CliIo = defaultIo()): Promise<number> {
   const body: any = await fetch(`http://127.0.0.1:${options.port}/.well-known/openmausbot/environment`).then((r) => r.json()).catch(() => null);
   if (body && options.json) io.log(JSON.stringify(body, null, 2));
-  if (!body) io.error(`No MausBot server is running here. Start it: ${cliCommand("serve")}`);
+  if (!body) io.error(`No Desk Yantra server is running here. Start it: ${cliCommand("serve")}`);
   if (body && !options.json) {
-    io.log(`Server "${body.label}"   running · MausBot ${body.version} on ${body.platform}\n  Local        127.0.0.1:${options.port}`);
+    io.log(`Server "${body.label}"   running · Desk Yantra ${body.version} on ${body.platform}\n  Local        127.0.0.1:${options.port}`);
     const address = await api(options.port, "/api/auth/pairing").then((r) => (typeof r.body?.publicUrl === "string" ? r.body.publicUrl as string : null)).catch(() => null);
     if (!address || isLoopbackHost(new URL(address).hostname)) io.log(`  Address      none: reachable from this machine only. Ways in: ${cliCommand("serve --help")}`);
     else for (const line of reachLines(address.startsWith("http:") ? "lan" : "public-url", address, options.port, cliPrefix(), address.startsWith("http:") ? undefined : await checkReach(options.port, address))) io.log(`  ${line.replace(/^Reach   /, "Address     ")}`);

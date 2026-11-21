@@ -47,7 +47,7 @@ describe("pairing devices from a hosted server's settings", () => {
     expect(pairingBlockedReason({ kind: "unauthenticated", error: "pair" })).toBeNull();
     const html = renderToStaticMarkup(createElement(ServerPairingCard, { initialSession: chatOnly }));
     expect(html).toContain("data-server-pairing-chat-only");
-    expect(html).toContain("openmausbot pair");
+    expect(html).toContain("desk-yantra pair");
     expect(html).toContain("This device has chat and approvals only, so it can&#x27;t pair others.");
     expect(html).toMatch(/<button[^>]*aria-disabled="true"[^>]*data-phone-pairing-action[^>]*>Pair a phone<\/button>/);
     const admin = renderToStaticMarkup(createElement(ServerPairingCard, { initialSession: { ...chatOnly, scopes: ["admin", "client"] } }));
@@ -86,7 +86,7 @@ describe("pairing devices from a hosted server's settings", () => {
     const cloud = renderToStaticMarkup(createElement(ServerPairingCard, { initialSession: admin, cloudHome: true, placeName: "My Cloud" }));
     expect(cloud).toContain(">Pair a phone<");
     expect(cloud).not.toContain("Chat and approvals only");
-    expect(cloud, "one untitled row says what to do; the code and \"scan this code\" are only in the dialog").toContain("Install MausBot on your phone from the App Store or Google Play, then pair it here.");
+    expect(cloud, "one untitled row says what to do; the code and \"scan this code\" are only in the dialog").toContain("Install Desk Yantra on your phone from the App Store or Google Play, then pair it here.");
     expect(cloud).not.toContain("is always on");
     const elsewhere = renderToStaticMarkup(createElement(ServerPairingCard, { initialSession: admin }));
     expect(elsewhere).toContain("Chat and approvals only");

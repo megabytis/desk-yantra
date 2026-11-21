@@ -44,7 +44,7 @@ export function usage(prefix = "openmausbot"): string {
   return USAGE.split("\n").map((line) => line.replace(/^(\s+)openmausbot(?= )/, `$1${prefix}`)).join("\n");
 }
 
-export const USAGE = `openmausbot — your team of AI bots, ready in a few steps
+export const USAGE = `desk-yantra — your self-hosted personal AI agent workspace, ready in a few steps
 
   openmausbot                         set up once, then open your workspace
   openmausbot setup [--data-dir DIR]
@@ -132,6 +132,6 @@ Ways in (pick one; --lan can join any):
 
 ${HEADLESS_USAGE}
 
-Install once with \`npm install -g openmausbot\`, then type \`openmausbot\`.
-Or run without a global install: \`npx openmausbot\`. Node 24+ is required.
+Install once with \`npm install -g desk-yantra\`, then type \`desk-yantra\`.
+Or run without a global install: \`npx desk-yantra\`. Node 24+ is required.
 `;

@@ -50,7 +50,7 @@ export function codeReady(code: string): boolean {
 export function openInAppLink(origin: string, code: string): string {
   const read = readPairingInput(code);
   const filled = read.kind === "code" ? `&code=${encodeURIComponent(formatPairingCode(read.code))}` : "";
-  return `openmausbot://pair?address=${encodeURIComponent(origin)}${filled}`;
+  return `deskyantra://pair?address=${encodeURIComponent(origin)}${filled}`;
 }
 
 /** Plain http to the open internet: the session cookie and every chat would cross it readable. */
@@ -279,7 +279,7 @@ export function PairPage({ initialCode, initialEmail = null, reason }: { initial
             ) : null}
             {ownServer ? (
               <p className="mt-3 text-[13px] text-ink-secondary">
-                {t("pair.noCode")} <code className="select-all rounded bg-inset px-1.5 py-0.5 text-[12px] text-ink">npx openmausbot pair</code>
+                {t("pair.noCode")} <code className="select-all rounded bg-inset px-1.5 py-0.5 text-[12px] text-ink">desk-yantra pair</code>
               </p>
             ) : null}
             {emailOffered ? (

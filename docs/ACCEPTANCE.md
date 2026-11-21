@@ -685,3 +685,27 @@ Contributor: **Antigravity (Gemini 3.8 Flash)**, under owner direction.
 | `.venv/bin/python scripts/check_python.py` | PASS: 144 passed, 10 warnings in 10.99s. |
 | `git push origin main` | PASS: Commit `347c6ec` pushed to `origin/main`. |
 | GitHub Actions CI run `44914463653` | PASS: Workflow `fixture-tests` completed with conclusion `success`. |
+
+## Pairing UI, CLI Commands, and Brand Scrub — 2026-11-21
+
+Contributor: **Antigravity (Gemini 3.8 Flash)**, under owner direction.
+- **Brand Scrub & Rebranding in Auth/Pairing & CLI**:
+  - Scrubbed leftover OpenMausBot text from pairing screen (`next/src/pair/PairPage.tsx`), auth error message (`next/server/request-auth.ts`), place sheets, and remote computer settings.
+  - Rebranded CLI invocation prefix in `next/server/cli-invocation.ts` to `desk-yantra` and custom link scheme to `deskyantra://`.
+  - Rebranded CLI usage output (`next/server/cli-usage.ts`), reach lines (`next/server/cli-reach.ts`), pairing output (`next/server/cli-pairing.ts`), and CLI status (`next/server/cli.ts`).
+  - Updated translations in `next/src/locales/en.json` to reference `desk-yantra pair` and `Desk Yantra`.
+  - Enhanced launcher [scripts/launch_desk_yantra.sh](file:///home/megabytis/Github/personal/desk-yantra/scripts/launch_desk_yantra.sh) to automatically mint and print a direct local browser pairing link on startup for immediate 1-click browser pairing.
+- **Verification Evidence**:
+  - Validated all 187 tests across 15 Vitest suites in `next/`.
+  - Validated Gate 3, 4, 5 qualification scripts.
+  - Full production build: `NODE_OPTIONS=--max-old-space-size=4096 pnpm build` (6056 modules transformed, 0 errors).
+  - Python tests: `scripts/check_python.py` (144 passed).
+  - Playwright UI tests: `scripts/check_ui.py` (8 passed in 1.3m).
+
+| Command / check | Actual result this session |
+| --- | --- |
+| `pnpm vitest run src/pair/PairPage.test.ts src/components/ServerPairingCard.test.ts src/components/PlacesRail.test.ts src/components/RemoteComputerSection.test.ts server/cli-pair.test.ts server/cli-printed-commands.test.ts server/cli-invocation.test.ts server/service-unit.test.ts server/service-cli.test.ts server/brand.test.ts server/host-files.test.ts server/your-computer-consent.test.ts server/local-computer.test.ts server/approval-mode.test.ts scripts/testing/web-app-assets.test.ts` in `next/` | PASS: 15 test files, 187 passed. |
+| `NODE_OPTIONS=--max-old-space-size=4096 pnpm build` in `next/` | PASS: Production bundle built with 0 errors. |
+| `.venv/bin/python scripts/check_python.py` | PASS: 144 passed, 10 warnings in 16.97s. |
+| `.venv/bin/python scripts/check_ui.py` | PASS: 8 passed in 1.3m across all Playwright specs. |
+| `scripts/launch_desk_yantra.sh --help` | PASS: Prints clean Desk Yantra CLI usage. |

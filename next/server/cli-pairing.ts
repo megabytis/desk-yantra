@@ -9,7 +9,7 @@ import type { PhoneRelayStatus } from "./phone-relay.ts";
 export function desktopOwnedRefusal(status: number, body: unknown): string | null {
   const error = (body as { error?: unknown } | null)?.error;
   if (status !== 403 || typeof error !== "string" || !error.includes("must come from the desktop app")) return null;
-  return `The OpenMausBot desktop app runs this server, so a command here needs you signed in first: run ${cliCommand("login")} once and press Allow in the app. To pair a phone or another computer, use Settings → Phone & devices in the app.`;
+  return `The Desk Yantra desktop app runs this server, so a command here needs you signed in first: run ${cliCommand("login")} once and press Allow in the app. To pair a phone or another computer, use Settings → Phone & devices in the app.`;
 }
 
 /** A clock time a code works until: "11:22", or "tomorrow 11:22" / a date when it runs past today. */
@@ -51,7 +51,7 @@ export function pairingBlock(input: {
   lines.push(`Link           ${input.link}`);
   lines.push("");
   lines.push("  Desktop app   ＋ → Connect to a server, paste the link");
-  lines.push(scanInvite ? "  Phone         scan this with the MausBot app" : "  Phone         scan with your camera or the MausBot app");
+  lines.push(scanInvite ? "  Phone         scan this with the Desk Yantra app" : "  Phone         scan with your camera or the Desk Yantra app");
   lines.push("");
   lines.push(qrToString(scanInvite ? input.inviteUrl! : input.link));
   if (!input.chatOnly) lines.push(`For a phone (chat and approvals only)   ${input.prefix} pair --phone`);

@@ -15,7 +15,7 @@ const PLACEHOLDERS: Record<string, string> = {
 function printedCommands(text: string): string[][] {
   const found: string[][] = [];
   for (const line of text.split("\n")) {
-    for (const match of line.matchAll(/(?:npx )?openmausbot((?: (?!openmausbot)[^\s,;()`'"]+)*)/g)) {
+    for (const match of line.matchAll(/(?:npx )?(?:openmausbot|desk-yantra)((?: (?!(?:openmausbot|desk-yantra))[^\s,;()`'"]+)*)/g)) {
       const words = match[1]!.trim().split(/\s+/).filter(Boolean).map((word) => PLACEHOLDERS[word] ?? word.replace(/[.:]$/, "")).filter(Boolean);
       if (words.length && !/[[\]|]/.test(words.join(" "))) found.push(words);
     }

@@ -83,10 +83,10 @@ export function noRouteLines(port: number, prefix: string): string[] {
     "",
     "Pick a way in and run again:",
     `  ${prefix} serve --public-url https://…     you already have HTTPS in front (cloudflared, Caddy)`,
-    `  ${prefix} serve --domain maus.example.com  we get the certificate (ports 80, 443)`,
+    `  ${prefix} serve --domain example.com       we get the certificate (ports 80, 443)`,
     `  ${prefix} serve --tailscale                your tailnet (needs Tailscale)`,
     `  ${prefix} serve --lan                      this network only, not encrypted`,
-    `  ${prefix} serve --tunnel                   a free MausBot web address; sign in first: ${prefix} login`,
+    `  ${prefix} serve --tunnel                   a public tunnel address; sign in first: ${prefix} login`,
     `Sign in from a browser on this machine with the link from: ${prefix} pair`,
   ];
 }

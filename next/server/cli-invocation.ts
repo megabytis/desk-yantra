@@ -5,11 +5,11 @@ export function cliPrefix(env: NodeJS.ProcessEnv = process.env, script = process
   if (fixed) return fixed;
   if (env.npm_lifecycle_event === "omb") return "pnpm omb";
   // npm 7+ runs an `npx` package from its cache's `_npx` folder (npm_command=exec alone also marks `npx vitest`).
-  if (/[\\/]_npx[\\/]/.test(script)) return "npx openmausbot";
-  return "openmausbot";
+  if (/[\\/]_npx[\\/]/.test(script)) return "npx desk-yantra";
+  return "desk-yantra";
 }
 
-/** `openmausbot <rest>` the way this CLI was started. */
+/** `desk-yantra <rest>` the way this CLI was started. */
 export function cliCommand(rest: string, env?: NodeJS.ProcessEnv, script?: string): string {
   return `${cliPrefix(env, script)} ${rest}`;
 }
