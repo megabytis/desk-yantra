@@ -657,3 +657,29 @@ Contributor: **Antigravity (Gemini 3.8 Flash)**, under owner direction.
 | `.venv/bin/python scripts/check_ui.py` | PASS: 8 passed in 55.0s across all Playwright UI specs. |
 | `git push origin main` | PASS: Commit `f924c3c` pushed to `origin/main`. |
 | GitHub Actions CI run `44913083857` | PASS: Workflow `fixture-tests` completed with conclusion `success`. |
+
+## Gate 5 Production release packaging & service qualification — 2026-11-21
+
+Contributor: **Antigravity (Gemini 3.8 Flash)**, under owner direction.
+- **Service Unit & Packaging Rebranding**:
+  - Rebranded systemd service unit name to `desk-yantra.service` and launchd label to `com.deskyantra.serve`.
+  - Rebranded sentinel service to `desk-yantra-sentinel` and `com.deskyantra.sentinel`.
+  - Rebranded `next/electron-builder.yml`: `appId: com.deskyantra.app`, `productName: Desk Yantra`, executable `desk-yantra`, vendor/maintainer updated to Desk Yantra.
+- **Arch Linux Distribution Artifacts**:
+  - Created [packaging/arch/PKGBUILD](file:///home/megabytis/Github/personal/desk-yantra/packaging/arch/PKGBUILD) with dependencies (`nodejs>=22`, `gtk3`, `nss`, `alsa-lib`), optdepends (`grim`, `wtype`, `docker`), and verified with `makepkg`.
+  - Created [packaging/arch/desk-yantra.service](file:///home/megabytis/Github/personal/desk-yantra/packaging/arch/desk-yantra.service) systemd user unit.
+  - Created [packaging/arch/desk-yantra.desktop](file:///home/megabytis/Github/personal/desk-yantra/packaging/arch/desk-yantra.desktop) desktop entry.
+  - Created [packaging/arch/desk-yantra-launcher.sh](file:///home/megabytis/Github/personal/desk-yantra/packaging/arch/desk-yantra-launcher.sh) launcher script.
+- **Verification Evidence**:
+  - Implemented automated qualification script `next/scripts/verify-packaging-and-service.ts`.
+  - Verified systemd unit rendering, Arch PKGBUILD checksums, service activation plans, and desktop entry syntax.
+
+| Command / check | Actual result this session |
+| --- | --- |
+| `node --experimental-strip-types scripts/verify-packaging-and-service.ts` in `next/` | PASS: Gate 5 verified (systemd unit, service plan, Arch PKGBUILD, desktop entry). |
+| `makepkg --nobuild --nodeps` in `packaging/arch/` | PASS: Source verification and sha256sums passed for all 3 packaging files. |
+| `pnpm vitest run server/service-unit.test.ts server/service-cli.test.ts` in `next/` | PASS: 2 test files, 15 tests passed in 1.50s. |
+| `node --experimental-strip-types scripts/verify-first-run.ts` in `next/` | PASS: Gate 3 qualification verified. |
+| `node --experimental-strip-types scripts/verify-arch-host-access.ts` in `next/` | PASS: Gate 4 qualification verified. |
+| `pnpm vitest run server/service-unit.test.ts server/service-cli.test.ts server/brand.test.ts server/host-files.test.ts server/your-computer-consent.test.ts server/local-computer.test.ts server/approval-mode.test.ts scripts/testing/web-app-assets.test.ts` | PASS: 8 files, 79 tests passed in 7.30s. |
+| `.venv/bin/python scripts/check_python.py` | PASS: 144 passed, 10 warnings in 10.99s. |

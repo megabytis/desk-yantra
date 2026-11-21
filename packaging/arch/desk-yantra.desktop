@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Desk Yantra
+Comment=Self-hosted personal AI agent workspace
+Exec=desk-yantra
+Icon=desk-yantra
+Terminal=false
+Type=Application
+Categories=Utility;Development;
+StartupWMClass=Desk Yantra
+

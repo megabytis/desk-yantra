@@ -1,0 +1,20 @@
+[Unit]
+Description=Desk Yantra personal agent workspace
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h
+Environment=NODE_OPTIONS=--max-old-space-size=4096
+Environment=OMB_DATA_DIR=%h/.desk-yantra
+Environment=OMB_PORT=8799
+ExecStart=/usr/bin/desk-yantra serve --port 8799 --data-dir %h/.desk-yantra --no-pair
+Restart=always
+RestartSec=3
+TimeoutStopSec=30
+KillMode=mixed
+
+[Install]
+WantedBy=default.target
+
