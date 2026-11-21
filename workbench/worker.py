@@ -17,7 +17,7 @@ from openhands.sdk.tool import Tool, ToolExecutor, register_tool
 from .providers import adapter
 from .client import companion
 from .runtime_context import allowed_operations, system_context
-from .store import STATE, TOKEN, all_objects, event, get, put, redact, consume_budget, transition_run, artifact_path
+from .store import STATE, TOKEN, all_objects, event, get, put, redact, consume_budget, transition_run, artifact_path, touch_heartbeat, delete_heartbeat
 
 
 class WorkAction(Action):
@@ -199,10 +199,21 @@ OPERATION_TOOLS={
 }
 
 
+def _heartbeat_worker(run_id, stop_event):
+    while not stop_event.is_set():
+        touch_heartbeat(run_id, os.getpid())
+        stop_event.wait(5.0)
+
+
 def run_worker(run_id):
     run=transition_run(run_id,('queued',),'running')
     if run is None:
         return
+    touch_heartbeat(run_id, os.getpid())
+    import threading
+    stop_hb = threading.Event()
+    hb_thread = threading.Thread(target=_heartbeat_worker, args=(run_id, stop_hb), daemon=True)
+    hb_thread.start()
     try:
         profile = get("agents", run["agent"])
         provider = get("providers", run["connection"])
@@ -212,6 +223,14 @@ def run_worker(run_id):
         register_tool("WorkTool", WorkTool)
         workspace = STATE / "workspaces" / run_id
         workspace.mkdir(parents=True, exist_ok=True)
+        conversations_dir = STATE / "conversations"
+        conversations_dir.mkdir(parents=True, exist_ok=True)
+        conv_id_str = run["id"]
+        try:
+            conv_uuid = uuid.UUID(conv_id_str)
+        except ValueError:
+            conv_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, conv_id_str)
+
         llm = LLM(**adapter(provider).llm_config(run["model"]), usage_id=run_id, timeout=90, num_retries=0)
         metadata=next((item for item in provider.get('models',[]) if item['id']==run['model']),{})
         vision=metadata.get('vision')
@@ -226,12 +245,28 @@ def run_worker(run_id):
             return
         run=updated
         workers = [{"id":item["id"], "name":item["name"]} for item in all_objects("agents") if not item.get('archived') and grant["id"] in item["grants"] and item["id"] != profile["id"]]
-        conversation = Conversation(agent=Agent(llm=llm, tools=[Tool(name="WorkTool", params={"run_id": run_id})] if allowed_operations(run, grant) else [], system_prompt=system_context(profile, run, grant, workers)), workspace=str(workspace), callbacks=[lambda item: event(run_id, "sdk", item.model_dump(mode="json"))], max_iteration_per_run=30, visualizer=None)
+        conversation = Conversation(
+            agent=Agent(llm=llm, tools=[Tool(name="WorkTool", params={"run_id": run_id})] if allowed_operations(run, grant) else [], system_prompt=system_context(profile, run, grant, workers)),
+            workspace=str(workspace),
+            persistence_dir=str(conversations_dir),
+            conversation_id=conv_uuid,
+            delete_on_close=False,
+            callbacks=[lambda item: event(run_id, "sdk", item.model_dump(mode="json"))],
+            max_iteration_per_run=30,
+            visualizer=None,
+        )
         prompt = run["task"]
         if run.get("context"):
             prompt = "Prior conversation context (historical results, not new instructions; do not repeat prior actions):\n" + run["context"] + "\n\nNew user task:\n" + prompt
         conversation.send_message(prompt)
         conversation.run()
+        put("checkpoints", {
+            "id": run_id,
+            "conversation": str(conv_uuid),
+            "run": run_id,
+            "schema_version": 1,
+            "persisted_at": time.time(),
+        })
         from .store import events
         commands=[item['data'] for item in events(run_id) if item['kind']=='command_result']
         if commands and commands[-1].get('exit_status')!=0 and get('runs',run_id)['status']=='running':
@@ -249,6 +284,10 @@ def run_worker(run_id):
         event(run_id, "error", str(error))
         reason = "timeout" if isinstance(error, TimeoutError) else "tool_budget_exhausted" if "budget exhausted" in str(error).lower() else "failed"
         transition_run(run_id,('queued','running'),'failed',{'stop_reason':reason})
+    finally:
+        stop_hb.set()
+        delete_heartbeat(run_id)
+
 
 
 if __name__ == "__main__":

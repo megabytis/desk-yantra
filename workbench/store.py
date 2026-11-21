@@ -112,6 +112,27 @@ def all_objects(kind):
         return [json.loads(row[0]) for row in DB.execute("SELECT body FROM objects WHERE kind=?", (kind,))]
 
 
+def touch_heartbeat(run_id, pid=None):
+    with LOCK:
+        heartbeat = {"id": run_id, "time": time.time(), "pid": pid or os.getpid()}
+        DB.execute("INSERT OR REPLACE INTO objects VALUES ('heartbeats',?,?)", (run_id, json.dumps(heartbeat)))
+        DB.commit()
+    return heartbeat
+
+
+def get_heartbeat(run_id):
+    with LOCK:
+        row = DB.execute("SELECT body FROM objects WHERE kind='heartbeats' AND id=?", (run_id,)).fetchone()
+        return json.loads(row[0]) if row else None
+
+
+def delete_heartbeat(run_id):
+    with LOCK:
+        DB.execute("DELETE FROM objects WHERE kind='heartbeats' AND id=?", (run_id,))
+        DB.commit()
+
+
+
 def transition_run(ident,expected,status,extra=None):
     with LOCK:
         DB.execute('BEGIN IMMEDIATE')

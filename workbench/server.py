@@ -21,7 +21,7 @@ from .providers import DEFAULTS, adapter, public, detect_local_engines
 from .catalog import get_catalog, find_catalog_model
 from .client import companion
 from . import store
-from .store import STATE, CIPHER, all_objects, event, events, get, put, redact, transition_run, rotate_token, artifact_path
+from .store import STATE, CIPHER, all_objects, event, events, get, put, redact, transition_run, rotate_token, artifact_path, touch_heartbeat, get_heartbeat, delete_heartbeat
 
 WORKERS = {}
 MAX_REQUEST_BODY = 10 * 1024 * 1024
@@ -48,6 +48,52 @@ def login_attempt(client: str, valid: bool) -> int:
         else:
             _login_failures.setdefault(client, deque()).append(now)
     return 0
+
+
+LEASE_TIMEOUT = 45.0
+
+
+def reconcile_runs():
+    """Periodic and on-demand reconciliation of active workers based on leases and heartbeats."""
+    now = time.time()
+    reconciled = []
+    for run in all_objects("runs"):
+        if run.get("status") in ("running", "approval"):
+            ident = run["id"]
+            hb = get_heartbeat(ident)
+            is_dead = False
+            if ident in WORKERS:
+                if WORKERS[ident].poll() is not None:
+                    is_dead = True
+            elif hb:
+                if (now - hb.get("time", 0)) >= LEASE_TIMEOUT:
+                    is_dead = True
+                elif hb.get("pid"):
+                    try:
+                        os.kill(hb["pid"], 0)
+                    except (ProcessLookupError, PermissionError):
+                        is_dead = True
+
+            if is_dead:
+                kill_worker(ident)
+                delete_heartbeat(ident)
+                cleanup_confirmed = False
+                try:
+                    cleanup_confirmed = companion("/stop/" + ident, {}, timeout=5).get("stopped") is True
+                except Exception:
+                    pass
+                for approval in all_objects("approvals"):
+                    if approval.get("run") == ident and approval.get("status") in ("pending", "approved"):
+                        approval["status"] = "cancelled"
+                        put("approvals", approval)
+                history = events(ident)
+                uncertain = any(item["kind"] in ("action_started", "tool_call") and item["data"].get("op") not in ("read", "list") for item in history)
+                status = "review" if uncertain or not cleanup_confirmed else "failed"
+                changed = transition_run(ident, ("running", "approval"), status, {"stop_reason": "lease_expired"})
+                if changed:
+                    reconciled.append(ident)
+                    event(ident, "recovery", f"Worker lease expired (> {LEASE_TIMEOUT}s). Unresponsive worker stopped.")
+    return reconciled
 
 
 @asynccontextmanager
@@ -341,6 +387,11 @@ def revoke(ident: str):
 
 
 def new_run(body, parent=None):
+    idempotency_key = body.get("idempotency_key")
+    if idempotency_key:
+        existing = next((r for r in all_objects("runs") if r.get("idempotency_key") == idempotency_key), None)
+        if existing:
+            return existing
     profile = get("agents", body["agent"])
     if profile.get('archived'):
         raise ValueError('This agent is archived. Restore it before starting work.')
@@ -380,6 +431,7 @@ def new_run(body, parent=None):
     run["conversation"] = body.get("conversation") or run["id"]
     run["workspace_id"] = run["conversation"] if run["mode"]=="sandbox" and not parent else run["id"]
     run["context"] = body.get("context", "")
+    run["idempotency_key"] = idempotency_key
     put("runs", run)
     event(run["id"], "created", run)
     start_worker(run["id"])
@@ -423,7 +475,13 @@ def watch_worker(ident, process):
 
 @app.post("/api/runs")
 def launch(body: dict):
-    return new_run({name:body[name] for name in ("agent","grant","task","connection","model") if name in body})
+    return new_run({name:body[name] for name in ("agent","grant","task","connection","model","idempotency_key") if name in body})
+
+
+@app.post("/api/runs/reconcile")
+def api_reconcile():
+    reconciled = reconcile_runs()
+    return {"reconciled": len(reconciled), "runs": reconciled}
 
 
 @app.get("/api/conversations/{ident}")

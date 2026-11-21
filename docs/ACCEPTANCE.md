@@ -370,5 +370,24 @@ Contributor: **OpenAI Codex (GPT-6)**, under owner direction. Both services now 
 | `.venv/bin/python scripts/check_python.py` | PASS: 116 passed, 3 warnings in 12.77s. |
 | `.venv/bin/python scripts/check_ui.py` | PASS: 6 passed in 1.2m. |
 | GitHub Actions run `44870552783` for prior commit `33dae73` | PASS: completed with conclusion `success`. |
+| GitHub Actions run `44871878942` for prior commit `9f0e9e1` | PASS: completed with conclusion `success`. |
+
+## Durable worker heartbeats, lease reconciliation, idempotency keys, and SDK conversation checkpoints — 2026-11-21
+
+Contributor: **Antigravity (Gemini 3.8 Flash)**, under owner direction. References: `openfuse` (lease and heartbeat supervision) and `OpenHands` (SDK conversation persistence).
+- Worker heartbeats & leases: `workbench/store.py` adds `touch_heartbeat`, `get_heartbeat`, and `delete_heartbeat`. `workbench/worker.py` runs a background daemon thread updating heartbeat every 5 seconds while work is running, and cleans up on termination.
+- Stale worker reconciliation: `workbench/server.py` defines `LEASE_TIMEOUT = 45.0` and `reconcile_runs()`, detecting dead or expired worker processes. Stale runs have their workers killed, companion cleaned up, approvals cancelled, and status transitioned to `review` (if mutating tools or unconfirmed cleanup) or `failed`, recording `stop_reason="lease_expired"`.
+- Operator API: `POST /api/runs/reconcile` exposes the reconciliation sweep.
+- Idempotency keys: `new_run` and `POST /api/runs` in `workbench/server.py` accept `idempotency_key`, returning existing matching runs without duplicate worker spawning or effectful re-execution.
+- SDK conversation checkpoints: `workbench/worker.py` configures OpenHands `Conversation` with `persistence_dir=STATE/conversations`, `conversation_id`, and `delete_on_close=False`, persisting conversation state (`base_state.json`) and recording versioned checkpoint metadata under kind `'checkpoints'`.
+- Test coverage: `tests/test_durable_lifecycle.py` adds 4 tests verifying heartbeat store operations, idempotency key deduplication, expired lease reconciliation with approval cancellation, and the `/api/runs/reconcile` API endpoint.
+
+| Command / check | Actual result this session |
+| --- | --- |
+| `.venv/bin/python scripts/check_python.py tests/test_durable_lifecycle.py -q` | PASS: 4 passed in 0.35s. |
+| `npm run build` | PASS: TypeScript and Vite production bundle with 0 errors. |
+| `.venv/bin/python scripts/check_python.py` | PASS: 120 passed, 3 warnings in 12.63s. |
+| `.venv/bin/python scripts/check_ui.py` | PASS: 6 passed in 1.2m. |
+
 
 
