@@ -327,4 +327,15 @@ Contributor: **OpenAI Codex (GPT-6)**, under owner direction. A real Chromium pr
 | `docker build -t paw-sandbox:local sandbox` | PASS: image built with updated browser service. |
 | GitHub Actions run `44867605620` for prior commit `af444b8` | PASS: completed with conclusion `success`. |
 
+## Settings dialog keyboard lifecycle — 2026-11-21
+
+Contributor: **OpenAI Codex (GPT-6)**, under owner direction. Provider, agent and workspace editors now keep Tab focus within the dialog, close on Escape when an action is not busy, and return focus to the opening control. `tests/ui/settings.spec.ts` exercises keyboard containment and focus return for connection and workspace dialogs in Chromium. This is a focused keyboard fix, not a complete screen-reader, contrast, zoom or mobile accessibility audit.
+
+| Command / check | Actual result this session |
+| --- | --- |
+| `npm run build` | PASS: TypeScript and Vite production bundle. |
+| `.venv/bin/python scripts/check_ui.py tests/ui/settings.spec.ts` | PASS: 3 passed in 9.3s. |
+| `.venv/bin/python scripts/check_ui.py` | PASS: 6 passed in 1.2m. |
+| GitHub Actions run `44869541094` for prior commit `c7fa00d` | PASS: completed with conclusion `success`. |
+
 

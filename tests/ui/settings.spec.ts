@@ -93,3 +93,28 @@ test('settings: failed model refresh keeps existing models and explains the fail
   await page.locator('.connection-card').filter({hasText:name}).click();
   await expect(page.getByText('Last model refresh failed')).toBeVisible();
 });
+
+test('settings: dialogs trap keyboard focus and return it on Escape',async({page})=>{
+  await page.goto('/');
+  await page.getByLabel('Launch token').fill(readFileSync(join(process.env.PAW_STATE || '.state','token'),'utf8').trim());
+  await page.getByRole('button',{name:'Connect to workbench'}).click();
+  await page.getByRole('button',{name:/Settings & providers/}).click();
+  const opener=page.getByRole('button',{name:/Add connection/});
+  await opener.click();
+  const dialog=page.getByRole('dialog',{name:'Model connection'});
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button',{name:'Close editor'}).focus();
+  await page.keyboard.press('Shift+Tab');
+  await expect(dialog.getByRole('button',{name:'Save connection'})).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(dialog.getByRole('button',{name:'Close editor'})).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  await expect(opener).toBeFocused();
+  await page.getByRole('button',{name:'Computer access'}).click();
+  const grantOpener=page.getByRole('button',{name:/Add workspace/});
+  await grantOpener.click();
+  await expect(page.getByRole('dialog',{name:'Workspace access'})).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(grantOpener).toBeFocused();
+});
