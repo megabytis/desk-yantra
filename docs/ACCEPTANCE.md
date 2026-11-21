@@ -349,4 +349,15 @@ Contributor: **OpenAI Codex (GPT-6)**, under owner direction. `scripts/render_us
 | `.venv/bin/python scripts/check_python.py` | PASS: 113 passed, 3 warnings in 12.00s. |
 | GitHub Actions run `44869862926` for prior commit `fd21aac` | PASS: completed with conclusion `success`. |
 
+## Artifact usage report and explicit orphan cleanup — 2026-11-21
+
+Contributor: **OpenAI Codex (GPT-6)**, under owner direction. `workbench/storage.py` reports referenced artifact bytes and eligible unreferenced files; CLI `storage` is read-only, and `prune-artifacts` previews old files before `--apply` deletes them. Applying refuses an active app/companion or queued/running/approval/paused/review run, skips links and non-regular entries, and rechecks candidate file identity before removal. Tests used disposable state only; no file in the owner's private state was deleted. A read-only owner-state report found 54 referenced artifacts and no eligible files at 30 days. This does not clean workspaces, Docker containers, backups or logs, and it is not a concurrent adversarial filesystem guarantee.
+
+| Command / check | Actual result this session |
+| --- | --- |
+| `.venv/bin/python scripts/check_python.py tests/test_storage.py tests/test_backup.py -q` | PASS: 8 passed in 0.43s. |
+| `.venv/bin/python -m workbench storage` | PASS: 54 referenced artifacts (311436 bytes), 0 old unreferenced files. |
+| `.venv/bin/python scripts/check_python.py` | PASS: 115 passed, 3 warnings in 12.19s. |
+| GitHub Actions run `44870279295` for prior commit `da96811` | PASS: completed with conclusion `success`. |
+
 

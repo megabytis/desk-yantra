@@ -111,9 +111,17 @@ def serve():
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("command", choices=["serve", "stop", "token", "backup", "verify-backup", "restore"], default="serve", nargs="?")
+    parser.add_argument("command", choices=["serve", "stop", "token", "storage", "prune-artifacts", "backup", "verify-backup", "restore"], default="serve", nargs="?")
     parser.add_argument("path", nargs="?", help="Private backup directory or fresh restore state directory")
+    parser.add_argument("--older-than-days", type=int, default=30, help="Minimum age for unreferenced artifact cleanup (default: 30)")
+    parser.add_argument("--apply", action="store_true", help="Delete eligible unreferenced files; prune-artifacts only")
     args = parser.parse_args()
+    if args.apply and args.command != "prune-artifacts":
+        parser.error("--apply is only valid with prune-artifacts")
+    if args.path and args.command not in ("backup", "verify-backup", "restore"):
+        parser.error("This command does not accept a path; set PAW_STATE for the private state directory")
+    if args.older_than_days < 1:
+        parser.error("--older-than-days must be at least one")
     if args.command in ("backup", "verify-backup", "restore"):
         if not args.path:
             parser.error("backup, verify-backup and restore require a path")
@@ -137,6 +145,24 @@ def main():
     if args.command == "token":
         from .store import current_token
         print(current_token())
+        return 0
+    if args.command in ("storage", "prune-artifacts"):
+        from .store import STATE, all_objects
+        from .storage import inspect_artifacts, prune_artifacts
+        records, runs = all_objects("artifacts"), all_objects("runs")
+        report = inspect_artifacts(STATE, records, args.older_than_days)
+        print(f"Referenced artifacts: {report['referenced_count']} ({report['referenced_bytes']} bytes)")
+        print(f"Unreferenced files older than {args.older_than_days} days: {report['orphan_count']} ({report['orphan_bytes']} bytes)")
+        if report["skipped_entries"]:
+            print(f"Skipped non-regular or linked entries: {report['skipped_entries']}")
+        if args.command == "prune-artifacts":
+            for item in report["candidates"]:
+                print(f"  {item['name']} ({item['size']} bytes)")
+            if args.apply:
+                result = prune_artifacts(STATE, records, runs, args.older_than_days)
+                print(f"Removed {result['removed_count']} files ({result['removed_bytes']} bytes)")
+            else:
+                print("Preview only. Add --apply to remove these files while Desk Yantra is stopped.")
         return 0
     return serve()
 

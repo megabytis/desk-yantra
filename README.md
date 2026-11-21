@@ -87,6 +87,8 @@ PAW_STATE=/path/to/fresh-state uv run python -m workbench restore /path/to/priva
 
 The backup contains the pairing token, encryption key, SQLite snapshot, events and referenced artifacts. Treat it like a password vault: keep it private, encrypted by your storage system, and never publish it. `verify-backup` reads and checks an archive without restoring it; restore runs the same checks, rejects an existing destination, and updates artifact paths to the new state directory. The app and companion must be stopped for backup and restore. Review restored workspace grants and rotate the pairing token before using a copy on another machine. The SHA-256 manifest detects accidental changes; it does not authenticate an archive against someone who can edit both files and manifest. This is a private state backup, not a scrubbed export. A release upgrade/rollback procedure remains untested.
 
+To inspect artifact storage without changing files, run `uv run python -m workbench storage` with the same `PAW_STATE` as the app. `prune-artifacts` previews regular, unreferenced files older than 30 days; `--older-than-days N` changes the minimum age. Run `uv run python -m workbench prune-artifacts --apply` only after stopping Desk Yantra and reviewing the preview. Applying refuses active or review runs, skips links and non-regular entries, and leaves every artifact still referenced by the database. It does not remove historical run records, backups, workspaces or Docker containers.
+
 ## Development and tests
 
 ```sh
