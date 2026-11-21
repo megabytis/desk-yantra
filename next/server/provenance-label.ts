@@ -48,7 +48,7 @@ export const botWho = (name: string): string => `@${name} (bot)`;
 export const API_WHO = "an app, through the API";
 /** A Bot API key its owner marked as acting for them (bot-api.ts). */
 export const API_OWNER_WHO = "the owner, through the API with a key they marked as acting for them";
-export const HARNESS_WHO = "OpenMausBot";
+export const HARNESS_WHO = "Desk Yantra";
 export const routineWho = (name: string | undefined): string => name?.trim() ? `routine ${JSON.stringify(name.trim())}` : "a routine";
 export const webhookWho = (name: string | undefined): string => name?.trim() ? `webhook ${JSON.stringify(name.trim())}` : "a webhook";
 export const appEventWho = (app: string, event?: string): string => `${app}${event ? ` (${event})` : ""}, a connected app's event`;

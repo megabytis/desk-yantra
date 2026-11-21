@@ -738,3 +738,5 @@ Contributor: **OpenAI Codex (GPT-6)**. User's live bot answered that it worked i
 | Network capture / live provider reply | Not run; no claim that all upstream endpoints are removed. |
 
 The old PostHog wire and event-capture tests failed as expected after analytics was disabled; those three telemetry-only suites were removed. A final TypeScript check passed after dependency removal. The local Arch archive built before this correction was deleted so it cannot be used as a current release artifact. There are still 14 non-test source files with `openmausbot.com` references across browser, server and Electron code; their behavior requires the endpoint audit in `docs/UPSTREAM-INDEPENDENCE.md`.
+
+User observed a second upstream phrase in an automatic retry note. The exact source was `server/incidents.ts` (`RETRY_LEAD`, `AUTO_RETRY_LEAD`) and the shared provenance name in `server/provenance-label.ts`. Both now say Desk Yantra; the incident report text was updated too. Focused retry/incident verification: 2 files, 39 tests passed. Historical messages may still contain the original phrase.
