@@ -1,12 +1,12 @@
 # Maintainer: Desk Yantra Maintainers <https://github.com/megabytis/desk-yantra>
 pkgname=desk-yantra
-pkgver=0.2.0
+pkgver=0.1.173
 pkgrel=1
 pkgdesc="Self-hosted personal AI agent workspace for desktop and local host tasks"
 arch=('x86_64')
 url="https://github.com/megabytis/desk-yantra"
 license=('Apache-2.0')
-depends=('nodejs>=22' 'gtk3' 'nss' 'alsa-lib')
+depends=('nodejs>=24')
 makedepends=('pnpm')
 optdepends=(
     'grim: Wayland screen capture on Hyprland'
@@ -18,25 +18,26 @@ source=(
     "desk-yantra.service"
     "desk-yantra-launcher.sh"
 )
-sha256sums=(
-    '09bdfbbde3bb419451b82e06e28a229bef5b88ac3850eef47eec3ed7f0476d27'
-    'b5d6a5449d6d00c1150e9c9cbc2896ff37ed5163d9866ce7f163dae8d6acc79a'
-    '56dedb6b4e81539732577e2bab692a11b4c68b28dc7d6ac6a9bca99353af05fa'
-)
+sha256sums=('b910f3d086593711b3ee32c4b38692da9593ee7abb9f3cdad5c91c21e1793494'
+            '75e0ae4d3842116cf0cdda3c181f44fbf93c620755c062cb3c99cf51ae0c3875'
+            '757aec74baae651696ece1d1b2897f14d41cac76379974e10674054de87ec551')
 
 package() {
+    local app_source="${startdir}/../../next"
+    test -f "${app_source}/dist-server/openmausbot.js" || { error 'Build next/ with pnpm build:server first'; return 1; }
+    test -f "${app_source}/dist/index.html" || { error 'Build next/ with pnpm build first'; return 1; }
     install -Dm755 "${srcdir}/desk-yantra-launcher.sh" "${pkgdir}/usr/bin/desk-yantra"
     install -Dm644 "${srcdir}/desk-yantra.desktop" "${pkgdir}/usr/share/applications/desk-yantra.desktop"
     install -Dm644 "${srcdir}/desk-yantra.service" "${pkgdir}/usr/lib/systemd/user/desk-yantra.service"
 
-    # Install application files
     install -d "${pkgdir}/usr/lib/desk-yantra"
-    cp -r "${startdir}/../../next/dist" "${pkgdir}/usr/lib/desk-yantra/" 2>/dev/null || true
-    cp -r "${startdir}/../../next/public" "${pkgdir}/usr/lib/desk-yantra/" 2>/dev/null || true
-    cp -r "${startdir}/../../next/server" "${pkgdir}/usr/lib/desk-yantra/" 2>/dev/null || true
+    cp -r "${app_source}/dist" "${pkgdir}/usr/lib/desk-yantra/dist"
+    cp -r "${app_source}/dist-server" "${pkgdir}/usr/lib/desk-yantra/server"
+    install -Dm644 "${app_source}/LICENSE" "${pkgdir}/usr/share/licenses/desk-yantra/LICENSE"
+    install -Dm644 "${app_source}/NOTICE" "${pkgdir}/usr/share/licenses/desk-yantra/NOTICE"
 
     # Install icon
-    if [ -f "${startdir}/../../next/public/app-icon.svg" ]; then
-        install -Dm644 "${startdir}/../../next/public/app-icon.svg" "${pkgdir}/usr/share/icons/hicolor/scalable/apps/desk-yantra.svg"
+    if [ -f "${app_source}/public/app-icon.svg" ]; then
+        install -Dm644 "${app_source}/public/app-icon.svg" "${pkgdir}/usr/share/icons/hicolor/scalable/apps/desk-yantra.svg"
     fi
 }

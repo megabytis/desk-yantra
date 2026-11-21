@@ -53,7 +53,12 @@ assert.ok(existsSync(archLauncher), "desk-yantra-launcher.sh must exist");
 const pkgContent = readFileSync(archPkg, "utf8");
 assert.ok(pkgContent.includes("pkgname=desk-yantra"));
 assert.ok(pkgContent.includes("license=('Apache-2.0')"));
-assert.ok(pkgContent.includes("depends=('nodejs>=22'"));
+assert.ok(pkgContent.includes("depends=('nodejs>=24'"));
+assert.ok(pkgContent.includes('dist-server/openmausbot.js'));
+assert.ok(!pkgContent.includes('2>/dev/null || true'));
+const launcher = readFileSync(archLauncher, "utf8");
+assert.ok(launcher.includes('node server/openmausbot.js'));
+assert.ok(launcher.includes('OMB_STATIC_DIR'));
 
 console.log("=== Gate 5: PASS! Packaging & Service Verified Cleanly ===");
 

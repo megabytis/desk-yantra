@@ -3,7 +3,7 @@ set -euo pipefail
 
 PORT="${DESK_YANTRA_PORT:-8799}"
 DATA_DIR="${DESK_YANTRA_DATA_DIR:-${HOME}/.desk-yantra}"
-APP_DIR="/usr/lib/desk-yantra"
+APP_DIR="${DESK_YANTRA_APP_DIR:-/usr/lib/desk-yantra}"
 
 mkdir -p "${DATA_DIR}"
 
@@ -13,11 +13,13 @@ export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=4096}"
 
 if [ -d "${APP_DIR}" ]; then
     cd "${APP_DIR}"
-    exec node --experimental-strip-types server/openmausbot.ts "$@"
+    export OMB_STATIC_DIR="${APP_DIR}/dist"
+    exec node server/openmausbot.js "$@"
 else
     # Fallback to local repo execution if not globally installed
     REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/next"
     cd "${REPO_DIR}"
-    exec node --experimental-strip-types server/openmausbot.ts "$@"
+    export OMB_STATIC_DIR="${REPO_DIR}/dist"
+    exec node dist-server/openmausbot.js "$@"
 fi
 

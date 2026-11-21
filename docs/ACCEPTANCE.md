@@ -686,6 +686,19 @@ Contributor: **Antigravity (Gemini 3.8 Flash)**, under owner direction.
 | `git push origin main` | PASS: Commit `347c6ec` pushed to `origin/main`. |
 | GitHub Actions CI run `44914463653` | PASS: Workflow `fixture-tests` completed with conclusion `success`. |
 
+### Gate 5 package correction — 2026-11-21
+
+Contributor: **OpenAI Codex (GPT-6)**. Corrected the local Arch package to require Node 24, include the dependency-free `dist-server` bundle and Vite `dist` UI, preserve license/notice files, set the UI directory at launch, and fail when required build output is absent. Aligned the package version with `next/package.json` (`0.1.173`). The package is currently a **local checkout build** because its PKGBUILD reads `next/` from the adjacent repository; a source tarball/tag-based clean Arch distribution and actual `pacman` install remain open.
+
+| Check | Actual result |
+| --- | --- |
+| `pnpm build:server` in `next/` | PASS: bundled server entry points built, including `openmausbot.js`. |
+| `makepkg --nodeps --force` | First full run failed on `cp -a` ownership preservation in fakeroot; corrected to `cp -r`. Second and final runs completed and created a 20 MB local package. |
+| Package contents | Confirmed `usr/bin/desk-yantra`, `server/index.js`, `server/openmausbot.js`, `dist/index.html`, LICENSE and NOTICE inside the archive. |
+| Bundled server smoke against staged package | PASS: started without `node_modules`, resolved 14 proxy paths, exercised API/MCP/backup/loopback checks and clean stop. |
+| Staged package launcher | PASS: isolated `serve` started on loopback; `/` returned HTTP 200 `text/html`, `/api/health` returned HTTP 200 with `static:true`; service stopped cleanly. |
+| GitHub Actions | Pending for this correction; existing `fixture-tests` workflow exercises the old workbench and does not build this package. |
+
 ## Pairing UI, CLI Commands, and Brand Scrub — 2026-11-21
 
 Contributor: **Antigravity (Gemini 3.8 Flash)**, under owner direction.
