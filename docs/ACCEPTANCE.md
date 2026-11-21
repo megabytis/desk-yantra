@@ -534,3 +534,15 @@ Added `/?preview=1`, a standalone illustrative walkthrough available before pair
 ## Runtime reuse audit — 2026-11-21
 
 Contributor: **OpenAI Codex (GPT-6)**, under owner direction. Reviewed the current OpenHands SDK integration and local Hermes Agent `32dbc1dcda` and OpenMausBot `4e22b4d9b` runtime, approval and licensing seams. The concrete keep/reuse/replace decision is in `docs/REUSE-DECISION.md`. This was read-only source review and documentation; no tests were run and no external source was copied. Prior product-preview CI run `44896325395` completed successfully.
+
+## Live bot roster and task entry — 2026-11-21
+
+Contributor: **OpenAI Codex (GPT-6)**, under owner direction. The live chat sidebar now lists non-archived agent profiles as bots and can start a new conversation with a selected profile. A sole authorized workspace is selected automatically; multiple workspace choices still require the user to choose. Conversation rows show pending approval or review state. The fixture browser journey selected its bot from the roster and then completed a real host file edit, approved shell test and artifact download. This changes presentation and task selection only; OpenHands inference and companion grant/approval enforcement are unchanged.
+
+| Command / check | Actual result this session |
+| --- | --- |
+| `npm run build` | PASS: TypeScript and Vite build in 1.95s. |
+| `.venv/bin/python scripts/check_ui.py tests/ui/journey.spec.ts` | PASS: 1 passed in 24.0s. |
+| `.venv/bin/python scripts/check_ui.py` | PASS: 8 passed in 1.2m. |
+| Python suite | Not rerun: frontend and documentation only. |
+| GitHub Actions for this revision | Pending push and run. |

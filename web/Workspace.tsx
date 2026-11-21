@@ -80,13 +80,23 @@ export function Workspace({state,active,history,select,navigate,request,refresh}
     conversations.set(id,{...run,title:conversations.get(id)?.title||run.task});
   }
   const sessions=[...conversations.values()].sort((left:Item,right:Item)=>right.created-left.created);
+  const bots=state.agents.filter((item:Item)=>!item.archived);
+  const attentionCount=state.approvals.filter((item:Item)=>item.status==='pending').length+state.runs.filter((item:Item)=>item.status==='review').length;
+  function chooseBot(bot:Item){
+    setAgent(bot.id);setModelSelection('');
+    const available=state.grants.filter((item:Item)=>!item.revoked&&bot.grants.includes(item.id));
+    setGrant(available.length===1?available[0].id:'');
+    select('');
+  }
   return <div className={'agent-shell '+(showSurface?'surface-open':'')}>
     <aside className="agent-sidebar">
       <div className="agent-wordmark">◈ <strong>Desk Yantra</strong></div>
       <button className="new-task" onClick={()=>select('')}>＋ New conversation</button>
+      <div className="sidebar-caption bot-caption">YOUR BOTS <button type="button" onClick={()=>navigate('Agents')} aria-label="Manage bots">＋</button></div>
+      <div className="bot-list">{bots.map((bot:Item)=><button type="button" key={bot.id} className={'bot-row '+(!active&&agent===bot.id?'selected-bot':'')} onClick={()=>chooseBot(bot)} aria-label={`Start a conversation with ${bot.name}`}><span className="bot-avatar" aria-hidden="true">{bot.name.slice(0,1).toUpperCase()}</span><span className="bot-row-text"><strong>{bot.name}</strong><small>{bot.model||'Uses default model'} · {bot.grants.length} workspace{bot.grants.length===1?'':'s'}</small></span><span aria-hidden="true">→</span></button>)}{!bots.length&&<button type="button" className="bot-empty" onClick={()=>navigate('Agents')}>Create your first bot →</button>}</div>
       <nav className="workspace-shortcuts"><button onClick={()=>navigate('Runs')}>Runs</button><button onClick={()=>navigate('Artifacts')}>Artifacts</button></nav>
-      <div className="sidebar-caption">CONVERSATIONS</div>
-      <div className="session-list">{sessions.map((item:Item)=><button key={item.id} className={active&&(active.conversation||active.id)===(item.conversation||item.id)?'current-session':''} onClick={()=>select(item.id)}><span>{item.title}</span><small>{item.outcome==='needs_review'?'Review needed':item.status} · {item.model}</small></button>)}</div>
+      <div className="sidebar-caption">CONVERSATIONS {attentionCount>0&&<span className="sidebar-attention" aria-label={`${attentionCount} items need attention`}>{attentionCount} need you</span>}</div>
+      <div className="session-list">{sessions.map((item:Item)=><button key={item.id} className={active&&(active.conversation||active.id)===(item.conversation||item.id)?'current-session':''} onClick={()=>select(item.id)}><span>{item.title}</span><small>{state.approvals.some((approval:Item)=>approval.run===item.id&&approval.status==='pending')?'Approval needed':item.outcome==='needs_review'?'Result needs review':item.status} · {item.model}</small></button>)}</div>
       <div className="sidebar-bottom"><a className="preview-sidebar-link" href="/?preview=1">◈ Product preview</a><button onClick={()=>navigate('Agents')}>◎ Agents</button><button onClick={()=>navigate('Providers')}>⚙ Settings & providers</button><button onClick={()=>navigate('Permissions')}>◇ Computer access</button><button onClick={()=>navigate('Diagnostics')}>🩺 Diagnostics</button><small>{state.capabilities.machine || 'Companion unavailable'}</small></div>
     </aside>
     <div className="agent-center"><header className="agent-topbar"><details className="mobile-navigation"><summary aria-label="Open navigation">☰</summary><nav><button onClick={()=>select('')}>New conversation</button>{['Agents','Providers','Permissions','Runs','Artifacts','Diagnostics'].map(page=><button key={page} onClick={()=>navigate(page)}>{page==='Providers'?'Providers & models':page==='Permissions'?'Computer access':page==='Diagnostics'?'Diagnostics':page}</button>)}</nav></details><span>{active ? active.task.slice(0,65) : 'New conversation'}</span><span className="execution-pill">{workspace?.mode || 'No workspace selected'} · {active?.status || 'idle'}</span><button className="surface-toggle" onClick={()=>setShowSurface(!showSurface)}>{showSurface?'Conversation':'Workspace'}</button></header>

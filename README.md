@@ -42,6 +42,8 @@ The last command prints the private browser pairing token only in your terminal;
 4. **Chat**: select the agent and workspace and submit a task. Approve or deny exact actions and proposed diffs. Inspect terminal output and SDK events.
 5. **Runs / Artifacts**: reconnect to work and download actual output snapshots.
 
+The chat sidebar now lists active agent profiles as bots. Select one to start a new conversation; when it has exactly one authorized workspace, Desk Yantra selects that workspace for you. Conversations waiting for approval or review show that status in the sidebar. This is the first live adoption of the product preview; bot memory and the rest of the preview layout are still being built.
+
 Archive unused agents or connections from their settings cards. This prevents new tasks while preserving running work, credentials, and history. Enable **Show archived** to restore them. An archived default connection must be restored or replaced before new tasks can use it.
 
 Edit a connection to replace its API key, or select **Remove saved API key from this connection** to clear it. Blank key input keeps the existing key. Credential changes clear prior health checks and discovered model IDs; manual and catalog IDs stay on the same endpoint. Existing run records keep the connection ID and model name. Removing a key updates current state but cannot erase old copies from private backups or SQLite history.

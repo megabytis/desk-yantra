@@ -43,6 +43,9 @@ test('fixture: UI connection, model discovery, real host edit and artifact', asy
   await page.getByRole('button',{name:'Save agent'}).click();
   await expect(page.getByRole('heading',{name:agentName})).toBeVisible();
   await page.getByRole('button',{name:/Back to conversation/}).click();
+  await page.getByRole('button',{name:`Start a conversation with ${agentName}`}).click();
+  await expect(page.getByRole('combobox',{name:'Agent',exact:true})).toHaveValue(/.+/);
+  await expect(page.getByRole('combobox',{name:'Workspace',exact:true})).toHaveValue(/.+/);
   await page.getByRole('combobox',{name:'Agent',exact:true}).selectOption({label:agentName});
   await page.getByRole('combobox',{name:'Workspace',exact:true}).selectOption({label:`host · ${root}`});
   await page.getByLabel('Message',{exact:true}).fill('FIX_TEST: diagnose and fix the failing test');
