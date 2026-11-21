@@ -84,6 +84,14 @@ def initialize_schema(database):
 
 initialize_schema(DB)
 
+
+def storage_ready():
+    try:
+        with LOCK:
+            return DB.execute("SELECT 1").fetchone() == (1,)
+    except sqlite3.Error:
+        return False
+
 def put(kind, value):
     with LOCK:
         DB.execute("INSERT OR REPLACE INTO objects VALUES (?,?,?)", (kind, value["id"], json.dumps(value)))

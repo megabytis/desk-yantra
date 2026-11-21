@@ -1,10 +1,12 @@
 import argparse
+import json
 import os
 import signal
 import socket
 import subprocess
 import sys
 import time
+import urllib.request
 
 
 ACTIVE_STATUSES = ("running", "queued", "approval", "paused", "review")
@@ -20,11 +22,13 @@ def port_available(port):
             return False
 
 
-def port_ready(port):
+def service_ready(port, token):
     try:
-        with socket.create_connection(("127.0.0.1", port), timeout=.2):
-            return True
-    except OSError:
+        headers = {"Authorization": "Bearer " + token} if port == 8766 else {}
+        request = urllib.request.Request(f"http://127.0.0.1:{port}/healthz", headers=headers)
+        with urllib.request.urlopen(request, timeout=.5) as response:
+            return response.status == 200 and json.loads(response.read()) == {"status": "ok"}
+    except (OSError, ValueError):
         return False
 
 
@@ -69,7 +73,7 @@ def serve():
         for target, port in (("workbench.companion:app", "8766"), ("workbench.server:app", "8765")):
             children.append(subprocess.Popen([sys.executable, "-m", "uvicorn", target, "--host", "127.0.0.1", "--port", port, "--no-access-log"]))
         deadline = time.monotonic() + 30
-        while not stopping and not (port_ready(8765) and port_ready(8766)):
+        while not stopping and not (service_ready(8765, store.current_token()) and service_ready(8766, store.current_token())):
             if any(process.poll() is not None for process in children):
                 print("Desk Yantra service exited before startup completed.", file=sys.stderr)
                 result = 1

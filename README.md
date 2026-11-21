@@ -123,6 +123,8 @@ The input probe opens a native Wayland window, verifies its compositor focus, ty
 
 Set `PAW_STATE` to a private persistent directory to relocate state. Keep it outside any public repo. The application does not load `.env` automatically. No provider credentials are required to launch. Python and npm dependency lockfiles are included. Node only builds the web assets; there is no production Node service.
 
+For local readiness checks, `GET http://127.0.0.1:8765/healthz` returns a minimal app/storage status. The companion has `GET http://127.0.0.1:8766/healthz` and requires the current bearer pairing token, as all companion routes do. The launcher waits for both responses before printing the browser address. A healthy response confirms the process and SQLite connection, not Docker, a provider, or a model.
+
 ## Publishing
 
 The official source repository is `git@github.com:megabytis/desk-yantra.git`. The project remains under active development and has not passed the production release gates in `PLANNING.md`. Keep `.state`, `.env`, recordings, model weights, and logs out of commits. A GitHub Actions fixture workflow is included.

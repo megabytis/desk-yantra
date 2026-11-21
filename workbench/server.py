@@ -97,6 +97,13 @@ async def lifespan(app):
 app = FastAPI(lifespan=lifespan)
 
 
+@app.get("/healthz")
+def healthz():
+    if not store.storage_ready():
+        return JSONResponse({"status": "unavailable"}, status_code=503)
+    return {"status": "ok"}
+
+
 @app.middleware("http")
 async def security(request: Request, call_next):
     origin = request.headers.get("origin")

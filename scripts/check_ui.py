@@ -12,13 +12,13 @@ import urllib.request
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def wait_ready(url, processes, timeout=45):
+def wait_ready(url, processes, timeout=45, headers=None):
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         if any(process.poll() is not None for process in processes):
             raise RuntimeError("Fixture service exited before readiness")
         try:
-            with urllib.request.urlopen(url, timeout=1) as response:
+            with urllib.request.urlopen(urllib.request.Request(url, headers=headers or {}), timeout=1) as response:
                 if response.status == 200:
                     return
         except OSError:
@@ -47,18 +47,11 @@ def main():
                 for command in ([sys.executable, "-m", "workbench"], [sys.executable, "tests/fixture_server.py"]):
                     processes.append(subprocess.Popen(command, cwd=ROOT, env=environment,
                                                       stdout=log, stderr=log, start_new_session=True))
-                for url in ("http://127.0.0.1:8765/", "http://127.0.0.1:18767/api/tags"):
+                for url in ("http://127.0.0.1:8765/healthz", "http://127.0.0.1:18767/api/tags"):
                     wait_ready(url, processes)
-                # App readiness alone does not establish companion readiness.
-                deadline = time.monotonic() + 10
-                while True:
-                    try:
-                        with socket.create_connection(("127.0.0.1", 8766), timeout=1):
-                            break
-                    except OSError:
-                        if time.monotonic() >= deadline:
-                            raise RuntimeError("Companion readiness timed out")
-                        time.sleep(.2)
+                token = (Path(directory) / "token").read_text().strip()
+                wait_ready("http://127.0.0.1:8766/healthz", processes, timeout=10,
+                           headers={"Authorization": "Bearer " + token})
                 result = subprocess.call([str(ROOT / "node_modules/.bin/playwright"), "test", *sys.argv[1:]],
                                        cwd=ROOT, env=environment)
             finally:

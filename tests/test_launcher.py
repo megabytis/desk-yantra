@@ -7,6 +7,7 @@ import time
 from pathlib import Path
 
 import pytest
+from workbench import __main__ as cli
 
 
 def port_open(port):
@@ -39,6 +40,9 @@ def test_launcher_closes_both_services_when_one_stops(tmp_path, ending):
     try:
         assert wait_until(lambda: process.poll() is not None or (port_open(8765) and port_open(8766)))
         assert process.poll() is None, "Launcher exited before both services were ready"
+        token = (tmp_path / "state" / "token").read_text().strip()
+        assert cli.service_ready(8765, token)
+        assert cli.service_ready(8766, token)
         if ending == "launcher_signal":
             process.send_signal(signal.SIGTERM)
             expected = 0
@@ -63,6 +67,7 @@ def test_launcher_refuses_occupied_port_without_starting_companion(tmp_path):
     if port_open(8765) or port_open(8766):
         pytest.skip("Personal Desk Yantra service occupies the fixed loopback ports")
     with socket.socket() as occupied:
+        occupied.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         occupied.bind(("127.0.0.1", 8765))
         occupied.listen()
         environment = os.environ | {"PAW_STATE": str(tmp_path / "unused-state")}

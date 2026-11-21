@@ -360,4 +360,15 @@ Contributor: **OpenAI Codex (GPT-6)**, under owner direction. `workbench/storage
 | `.venv/bin/python scripts/check_python.py` | PASS: 115 passed, 3 warnings in 12.19s. |
 | GitHub Actions run `44870279295` for prior commit `da96811` | PASS: completed with conclusion `success`. |
 
+## App and companion HTTP readiness — 2026-11-21
+
+Contributor: **OpenAI Codex (GPT-6)**, under owner direction. Both services now expose minimal `/healthz` checks that return 503 when the local SQLite connection is unavailable. Companion readiness requires its normal bearer token; app readiness remains loopback and host/origin checked. The launcher and disposable browser test runner wait for HTTP success from both instead of treating an open TCP socket as ready. Focused tests cover healthy/unhealthy responses, missing companion authentication, and real launcher startup. These checks do not verify Docker, provider connectivity, model inference or desktop capability.
+
+| Command / check | Actual result this session |
+| --- | --- |
+| `.venv/bin/python scripts/check_python.py tests/test_health.py tests/test_launcher.py -q` | PASS: 4 passed in 3.70s after a test-only socket reuse correction. |
+| `.venv/bin/python scripts/check_python.py` | PASS: 116 passed, 3 warnings in 12.77s. |
+| `.venv/bin/python scripts/check_ui.py` | PASS: 6 passed in 1.2m. |
+| GitHub Actions run `44870552783` for prior commit `33dae73` | PASS: completed with conclusion `success`. |
+
 

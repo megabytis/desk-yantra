@@ -36,6 +36,10 @@ OpenAI Codex (GPT-6) made the launcher refuse occupied loopback ports and wait f
 
 OpenAI Codex (GPT-6) added a real Chromium probe after a policy review found that Playwright `route.continue_()` let Chromium follow HTTP redirects without invoking the route guard for the new host. The service now fetches a single response without following redirects and refuses 3xx responses with a `Location` header. HTTP resources and WebSockets are checked against the workspace domain rule; a blocked navigation closes the page and creates a fresh one in the same browser context. This intentionally limits browsing until safe redirect handling can be proven. It does not control arbitrary container processes or DNS rebinding.
 
+## Process readiness — 2026-11-21
+
+OpenAI Codex (GPT-6) added minimal `/healthz` routes for the app and companion. Both check the local SQLite connection; the companion route keeps its bearer authentication, while the app route is unauthenticated but bound to loopback and subject to the existing host/origin check. The launcher and isolated UI runner wait for HTTP success from both processes, rather than only accepting an open socket. This is process/storage readiness, not a claim about Docker, provider credentials, model inference, desktop integration or remote deployment.
+
 ## State schema versioning — 2026-11-20
 
 OpenAI Codex (GPT-6-sol) introduced SQLite `PRAGMA user_version` for Desk Yantra state. Version 0 is the pre-versioning layout; startup checks the baseline table layouts, creates missing tables/indexes and records version 1 in one SQLite transaction. An incompatible legacy layout fails without being stamped current. A database from a newer build fails startup rather than being silently downgraded. The backup tool rejects backups whose schema is newer than this build. Future schema changes need ordered migrations and old-state fixtures. Local Goose session migration code was consulted for versioning patterns; no source copied.

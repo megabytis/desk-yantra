@@ -29,6 +29,14 @@ STOPPED = set()
 MUTEX = threading.RLock()
 
 
+@app.get("/healthz")
+def healthz():
+    if not store.storage_ready():
+        from fastapi.responses import JSONResponse
+        return JSONResponse({"status": "unavailable"}, status_code=503)
+    return {"status": "ok"}
+
+
 def process_identity(pid):
     return Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()[19]
 
