@@ -704,25 +704,59 @@ def approve(ident: str, body: dict):
 
 @app.get("/api/artifacts/{ident}")
 def artifact(ident: str):
-    item = get("artifacts", ident)
     try:
+        item = get("artifacts", ident)
         path = artifact_path(item)
-    except ValueError as error:
+    except (KeyError, ValueError) as error:
         raise HTTPException(404, str(error)) from error
     return FileResponse(path, filename=item["name"], media_type="application/octet-stream")
 
 
 @app.get("/api/artifacts/{ident}/preview")
 def preview(ident: str):
-    item = get("artifacts", ident)
     try:
+        item = get("artifacts", ident)
         path = artifact_path(item)
-    except ValueError as error:
+    except (KeyError, ValueError) as error:
         raise HTTPException(404, str(error)) from error
+    name = (item.get("name") or "").lower()
     with open(path, "rb") as stream:
-        if stream.read(8) != b"\x89PNG\r\n\x1a\n":
-            raise HTTPException(415, "Only PNG previews are supported")
-    return FileResponse(path, media_type="image/png")
+        header = stream.read(16)
+    if header.startswith(b"\x89PNG\r\n\x1a\n"):
+        media_type = "image/png"
+    elif header.startswith(b"\xff\xd8\xff"):
+        media_type = "image/jpeg"
+    elif header.startswith(b"RIFF") and header[8:12] == b"WEBP":
+        media_type = "image/webp"
+    elif header.startswith((b"GIF87a", b"GIF89a")):
+        media_type = "image/gif"
+    elif name.endswith(".svg") and b"<svg" in header.lower():
+        media_type = "image/svg+xml"
+    else:
+        raise HTTPException(415, "Only safe image previews (PNG, JPEG, WebP, GIF, SVG) are supported")
+    return FileResponse(path, media_type=media_type)
+
+
+@app.get("/api/artifacts/{ident}/text")
+def artifact_text(ident: str):
+    try:
+        item = get("artifacts", ident)
+        path = artifact_path(item)
+    except (KeyError, ValueError) as error:
+        raise HTTPException(404, str(error)) from error
+    size = path.stat().st_size
+    MAX_TEXT_PREVIEW = 500_000
+    with open(path, "rb") as stream:
+        raw = stream.read(MAX_TEXT_PREVIEW + 1)
+    truncated = len(raw) > MAX_TEXT_PREVIEW
+    text = raw[:MAX_TEXT_PREVIEW].decode("utf-8", errors="replace")
+    return {
+        "id": ident,
+        "name": item.get("name", "artifact"),
+        "content": text,
+        "size": size,
+        "truncated": truncated,
+    }
 
 
 if Path("dist").exists():

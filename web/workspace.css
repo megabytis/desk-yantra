@@ -44,3 +44,49 @@
 .tree-artifacts{margin-top:8px;padding-top:6px;border-top:1px solid #29362d;display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:10px;color:#7e8e82}
 .tree-artifact-link{color:#9ed4af;text-decoration:none;padding:2px 6px;background:#202e24;border-radius:3px}
 .tree-artifact-link:hover{text-decoration:underline}
+
+/* Work Trace Filtering & Autoscroll Controls */
+.trace-toolbar{display:flex;align-items:center;gap:8px;padding:8px 0;margin-bottom:12px;border-bottom:1px solid #29362d;flex-wrap:wrap}
+.trace-filter-pills{display:flex;gap:4px;flex-wrap:wrap}
+.trace-pill{padding:4px 8px;font-size:11px;background:#18201a;border:1px solid #324337;border-radius:4px;color:#a0b1a4;cursor:pointer;text-transform:capitalize}
+.trace-pill.active-filter{background:#283b30;border-color:#5c7866;color:#e2ece4}
+.trace-search-input{padding:5px 9px;font-size:11px;background:#151b17;border:1px solid #324337;border-radius:4px;color:#dce5df;min-width:140px;flex:1}
+.autoscroll-btn{font-size:11px;padding:4px 9px;border:1px solid #384b3e;background:#1c251f;border-radius:4px;color:#a8b9ad;cursor:pointer}
+.autoscroll-btn.autoscroll-active{border-color:#548063;color:#8ce3a3;background:#1c3123}
+.floating-jump-bottom{position:sticky;bottom:15px;margin:0 auto;display:block;background:#283b30;color:#e2ece4;border:1px solid #5a7b66;padding:6px 14px;border-radius:20px;font-size:11px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.4);z-index:10}
+
+/* Diff Viewer Side-by-Side and Inline */
+.diff-viewer-wrapper{margin:6px 0;background:#101512;border:1px solid #29382e;border-radius:6px;overflow:hidden}
+.diff-viewer-toolbar{display:flex;justify-content:space-between;align-items:center;background:#18221b;padding:6px 12px;border-bottom:1px solid #29382e;font-size:11px}
+.diff-command code{color:#b6dec0}
+.diff-mode-toggle{display:flex;gap:4px}
+.diff-mode-toggle button{font-size:10px;padding:3px 7px;background:#121814;border:1px solid #324337;border-radius:3px;color:#94a699;cursor:pointer}
+.diff-mode-toggle button.active-diff-mode{background:#283b30;border-color:#5a7b66;color:#e2ece4}
+.file-diff-inline{padding:10px 14px;max-height:400px;overflow:auto;font-family:monospace;font-size:11px;line-height:1.6;margin:0}
+.file-diff-sbs{overflow:auto;max-height:400px;font-family:monospace;font-size:11px}
+.sbs-table{width:100%;border-collapse:collapse}
+.sbs-table th{background:#18221b;padding:6px 10px;font-size:10px;color:#7e8f83;border-bottom:1px solid #29382e;text-align:left}
+.sbs-num{width:36px;text-align:right;padding:2px 8px;color:#617366;user-select:none;background:#131a15;border-right:1px solid #222d25;font-size:10px}
+.sbs-content{padding:2px 8px;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6}
+.sbs-remove{background:#441e22;color:#f3b4b8}
+.sbs-add{background:#1a3d26;color:#b2eec4}
+.sbs-context{color:#b7c5bc}
+.sbs-empty{background:#111713}
+.diff-expand-bar{text-align:center;padding:4px;background:#141d17;border-top:1px solid #29382e}
+.diff-expand-bar button{background:none;border:none;color:#8da595;font-size:10px;cursor:pointer}
+.diff-expand-bar button:hover{color:#bfe5cb}
+
+/* Artifact Preview Modal and List */
+.artifact-file-row{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid #29382e}
+.artifact-file-row .artifact-file{padding:0;border:none;color:#bfe5cb}
+.artifact-preview-pill{font-size:11px;padding:3px 8px;background:#202e24;border:1px solid #38503f;border-radius:4px;color:#b7dec2;cursor:pointer}
+.artifact-preview-pill:hover{background:#2a3e30}
+.artifact-preview-modal{max-width:750px;width:90vw;max-height:85vh;display:flex;flex-direction:column}
+.artifact-preview-body{flex:1;overflow:auto;margin:12px 0}
+.artifact-image-container{text-align:center;padding:12px}
+.artifact-image-container img{max-width:100%;max-height:60vh;border-radius:4px}
+.artifact-text-container{background:#111613;border:1px solid #29382e;border-radius:6px;overflow:hidden}
+.artifact-text-toolbar{display:flex;justify-content:space-between;align-items:center;padding:6px 12px;background:#18221b;border-bottom:1px solid #29382e;font-size:11px;color:#8ea394}
+.artifact-text-toolbar button{padding:2px 7px;font-size:10px;background:#202e24;border:1px solid #38503f;border-radius:3px;color:#bfe5cb;cursor:pointer}
+.artifact-text-content{padding:12px;margin:0;font-family:monospace;font-size:11px;line-height:1.6;max-height:55vh;overflow:auto;white-space:pre-wrap;color:#d5e2d8}
+.button-link{text-decoration:none;display:inline-block;padding:8px 14px;font-size:12px;border-radius:4px}

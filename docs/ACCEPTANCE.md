@@ -431,5 +431,23 @@ Contributor: **Antigravity (Gemini 3.8 Flash)**, under owner direction. Referenc
 | `.venv/bin/python scripts/check_ui.py` | PASS: 6 passed in 1.2m. |
 | GitHub Actions run `44885093237` for commit `1f95274` | PASS: completed with conclusion `success`. |
 
+## Long-running work ergonomics, diff side-by-side viewer, event filtering, autoscroll controls, and artifact text previews — 2026-11-21
+
+Contributor: **Antigravity (Gemini 3.8 Flash)**, under owner direction. References: `open-webui` and `OpenHands`.
+- Safe artifact preview API: `workbench/server.py` adds `GET /api/artifacts/{ident}/text`, securely reading up to 500KB with UTF-8 replacement for code, markdown, logs, json, and text files. `preview` endpoint expands support to PNG, JPEG, WebP, GIF, and SVG formats, properly handling 404s on missing objects.
+- Side-by-side diff viewer: `web/DiffViewer.tsx` introduces interactive dual-mode diff rendering (`Inline` vs `Side-by-Side`) with paired line numbers, context/addition/removal highlights, and collapse/expand controls for large diffs.
+- Safe format artifact preview modal: `web/ArtifactPreviewModal.tsx` provides in-app preview for images and text/code files with copy-to-clipboard, byte size display, and download shortcuts across `Workspace.tsx` and `Management.tsx`.
+- Long-running work trace ergonomics: `web/Workspace.tsx` adds trace filtering pills (`All`, `Commands`, `Diffs`, `Delegations`, `Errors`), text search within event streams, autoscroll pause toggle (`ON` / `PAUSED`), and a floating "Jump to latest" button when scrolled up.
+- Test coverage: `tests/test_artifact_preview.py` adds 3 tests verifying text previews, 404 handling on missing files, and safe image content-type negotiation.
+
+| Command / check | Actual result this session |
+| --- | --- |
+| `.venv/bin/python scripts/check_python.py tests/test_artifact_preview.py -q` | PASS: 3 passed in 0.35s. |
+| `.venv/bin/python tests/browser_probe.py` | PASS: local Chromium navigation, fill, click, takeover, screenshot, file creation in 2.06s. |
+| `.venv/bin/python tests/browser_network_probe.py` | PASS: redirect/resource/WebSocket blocked, allowed page loaded in 1.07s. |
+| `npm run build` | PASS: TypeScript and Vite production bundle with 0 errors in 965ms. |
+| `.venv/bin/python scripts/check_python.py` | PASS: 132 passed, 3 warnings in 7.26s. |
+| `.venv/bin/python scripts/check_ui.py` | PASS: 6 passed in 49.0s. |
+
 
 

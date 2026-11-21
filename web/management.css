@@ -36,3 +36,7 @@
 .detected-chip{font-size:11px;padding:4px 8px;background:#203126!important;border:1px solid #3d5845!important;color:#bde3cb!important;border-radius:4px}
 .detected-chip:hover{background:#2a4233!important}
 
+
+.artifact-card-links{display:flex;align-items:center;gap:8px;margin-top:14px}
+.artifact-card-preview-btn{font-size:11px;padding:5px 10px;background:#243329;border:1px solid #3c5443;border-radius:4px;color:#c1e4cb;cursor:pointer}
+.artifact-card-preview-btn:hover{background:#2e4235}
