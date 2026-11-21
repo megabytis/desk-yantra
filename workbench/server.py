@@ -480,6 +480,10 @@ def resolve_review(ident:str,body:dict):
 
 @app.post("/api/runs/{ident}/stop")
 def stop(ident: str):
+    return stop_run(ident)
+
+
+def stop_run(ident: str, cleanup_timeout: float | None = None):
     run = transition_run(ident, ("queued", "running", "approval", "paused", "review"), "stopped", {"stop_reason": "user_cancelled"})
     if run is None:
         return get("runs", ident)
@@ -489,9 +493,10 @@ def stop(ident: str):
             put("approvals", approval)
     for child in all_objects("runs"):
         if child.get("parent") == ident and child.get("status") in ("queued", "running", "approval", "paused", "review"):
-            stop(child["id"])
+            stop_run(child["id"], cleanup_timeout)
     try:
-        confirmed = companion("/stop/" + ident, {}).get("stopped") is True
+        result = companion("/stop/" + ident, {}) if cleanup_timeout is None else companion("/stop/" + ident, {}, timeout=cleanup_timeout)
+        confirmed = result.get("stopped") is True
         if not confirmed:
             raise ValueError("Companion did not confirm cleanup")
     except Exception:

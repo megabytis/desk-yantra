@@ -1,8 +1,112 @@
 import argparse
 import os
 import signal
+import socket
 import subprocess
 import sys
+import time
+
+
+ACTIVE_STATUSES = ("running", "queued", "approval", "paused", "review")
+
+
+def port_available(port):
+    with socket.socket() as probe:
+        probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            probe.bind(("127.0.0.1", port))
+            return True
+        except OSError:
+            return False
+
+
+def port_ready(port):
+    try:
+        with socket.create_connection(("127.0.0.1", port), timeout=.2):
+            return True
+    except OSError:
+        return False
+
+
+def stop_active_runs():
+    """Stop independent workers before shutting down their companion."""
+    from .store import all_objects, get
+    from .server import stop_run
+    unconfirmed = False
+    count = 0
+    for run in all_objects("runs"):
+        if get("runs", run["id"])["status"] not in ACTIVE_STATUSES:
+            continue
+        count += 1
+        if stop_run(run["id"], cleanup_timeout=5)["status"] == "review":
+            unconfirmed = True
+    if unconfirmed:
+        from .companion import recover_commands
+        recover_commands()
+        print("Companion could not confirm all cleanup. Review interrupted effects before starting replacement work.", file=sys.stderr)
+    return count, unconfirmed
+
+
+def serve():
+    for port in (8765, 8766):
+        if not port_available(port):
+            print(f"Loopback port {port} is occupied; stop that service before launching Desk Yantra.", file=sys.stderr)
+            return 1
+    from . import store
+    os.environ.setdefault("LITELLM_LOCAL_MODEL_COST_MAP", "True")
+    children = []
+    stopping = False
+    previous_handlers = {}
+
+    def request_stop(signum, frame):
+        nonlocal stopping
+        stopping = True
+
+    for signum in (signal.SIGINT, signal.SIGTERM):
+        previous_handlers[signum] = signal.signal(signum, request_stop)
+    result = 0
+    try:
+        for target, port in (("workbench.companion:app", "8766"), ("workbench.server:app", "8765")):
+            children.append(subprocess.Popen([sys.executable, "-m", "uvicorn", target, "--host", "127.0.0.1", "--port", port, "--no-access-log"]))
+        deadline = time.monotonic() + 30
+        while not stopping and not (port_ready(8765) and port_ready(8766)):
+            if any(process.poll() is not None for process in children):
+                print("Desk Yantra service exited before startup completed.", file=sys.stderr)
+                result = 1
+                break
+            if time.monotonic() >= deadline:
+                print("Desk Yantra services did not become ready within 30 seconds.", file=sys.stderr)
+                result = 1
+                break
+            time.sleep(.2)
+        if not stopping and result == 0:
+            print("Workbench: http://127.0.0.1:8765", flush=True)
+            print("Browser pairing token: " + store.TOKEN, flush=True)
+        while not stopping and result == 0:
+            failed = next(((process, process.poll()) for process in children if process.poll() is not None), None)
+            if failed:
+                print(f"A Desk Yantra service exited with status {failed[1]}; stopping the other service.", file=sys.stderr)
+                result = 1
+                break
+            time.sleep(.2)
+    finally:
+        try:
+            _, unconfirmed = stop_active_runs()
+            if unconfirmed:
+                result = 1
+        finally:
+            for process in reversed(children):
+                if process.poll() is None:
+                    process.terminate()
+            for process in reversed(children):
+                try:
+                    process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    process.wait()
+            for signum, previous in previous_handlers.items():
+                signal.signal(signum, previous)
+    return result
 
 def main():
     parser = argparse.ArgumentParser()
@@ -25,40 +129,12 @@ def main():
             result = restore_backup(args.path, state)
             print(f"Private state restored: {state} ({result['artifact_count']} artifacts)")
         return
-    from . import store
-    from .store import all_objects, put
     if args.command == "stop":
-        from .client import companion
-        for run in all_objects("runs"):
-            if run["status"] in ("running", "queued", "approval", "paused", "review"):
-                run["status"] = "stopped"
-                put("runs", run)
-                from .server import kill_worker
-                try:
-                    companion("/stop/" + run["id"], {},timeout=5)
-                except Exception:
-                    from .companion import recover_commands
-                    recover_commands()
-                    print('Companion unavailable; terminated recorded process groups where identity could be confirmed. Review interrupted external effects.')
-                finally:
-                    kill_worker(run["id"])
-        print("Local stop requested for all active runs")
-        return
-    os.environ.setdefault("LITELLM_LOCAL_MODEL_COST_MAP", "True")
-    print("Workbench: http://127.0.0.1:8765", flush=True)
-    print("Browser pairing token: " + store.TOKEN, flush=True)
-    companion = subprocess.Popen([sys.executable, "-m", "uvicorn", "workbench.companion:app", "--host", "127.0.0.1", "--port", "8766", "--no-access-log"])
-    server = subprocess.Popen([sys.executable, "-m", "uvicorn", "workbench.server:app", "--host", "127.0.0.1", "--port", "8765", "--no-access-log"])
-    try:
-        server.wait()
-    except KeyboardInterrupt:
-        pass
-    finally:
-        server.terminate()
-        companion.terminate()
-        server.wait()
-        companion.wait()
+        count, unconfirmed = stop_active_runs()
+        print(f"Local stop requested for {count} active runs")
+        return 1 if unconfirmed else 0
+    return serve()
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

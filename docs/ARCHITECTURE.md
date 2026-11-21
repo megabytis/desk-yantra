@@ -28,6 +28,10 @@ Limitations requiring continued work: full redaction of image/binary artifact co
 
 OpenAI Codex (GPT-6) added a shared local/CI runner at `scripts/check_ui.py`. It refuses occupied fixed ports, creates private temporary PAW_STATE, starts services with the current Python interpreter (without nested uv cache locks), checks HTTP and companion readiness, and passes the same state path to Playwright. Cleanup requests the application's stop command before terminating service process groups; cleanup failure makes the check fail. The stop CLI now includes runs waiting for approval. This verifies single-user fixture behavior, not production installation, a reboot or adversarial process containment.
 
+## Launcher supervision — 2026-11-21
+
+OpenAI Codex (GPT-6) made the launcher refuse occupied loopback ports and wait for both uvicorn services before displaying the pairing address and token. It monitors both child processes, handles SIGINT/SIGTERM, stops active runs through the same transition and approval-cancellation path as the API, and terminates the remaining service. Unconfirmed companion cleanup leaves the run in review and triggers recorded process-group recovery. This is process supervision for a foreground single-user launch; it is not a system service, reboot manager, or guarantee that external effects can be rolled back.
+
 ## State schema versioning — 2026-11-20
 
 OpenAI Codex (GPT-6-sol) introduced SQLite `PRAGMA user_version` for Desk Yantra state. Version 0 is the pre-versioning layout; startup checks the baseline table layouts, creates missing tables/indexes and records version 1 in one SQLite transaction. An incompatible legacy layout fails without being stamped current. A database from a newer build fails startup rather than being silently downgraded. The backup tool rejects backups whose schema is newer than this build. Future schema changes need ordered migrations and old-state fixtures. Local Goose session migration code was consulted for versioning patterns; no source copied.

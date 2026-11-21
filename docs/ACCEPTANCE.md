@@ -303,4 +303,15 @@ Contributor: **OpenAI Codex (GPT-6)**, under owner direction. `workbench/server.
 | `.venv/bin/python scripts/check_python.py` | PASS: 104 passed, 3 warnings in 8.87s. |
 | `.venv/bin/python scripts/check_ui.py` | PASS: 5 passed in 1.2m. |
 
+## Foreground launcher supervision and checked shutdown — 2026-11-21
+
+Contributor: **OpenAI Codex (GPT-6)**, under owner direction. `workbench/__main__.py` now refuses occupied loopback ports before creating runtime state, waits for both services before showing the pairing address/token, detects either child exiting, and handles SIGINT/SIGTERM by stopping active runs before closing both child services. CLI stop reuses `workbench/server.py`'s run transition and approval cancellation path. If the companion cannot confirm cleanup, the run remains in review and recorded process groups are recovered. `tests/test_launcher.py` starts real launcher processes to verify SIGTERM, companion exit and port refusal. These tests do not cover machine reboot or container escape/orphan behavior.
+
+| Command / check | Actual result this session |
+| --- | --- |
+| `.venv/bin/python scripts/check_python.py tests/test_cli.py tests/test_launcher.py tests/test_stop_api.py -q` | PASS: 9 passed in 3.54s after startup readiness changes. |
+| `.venv/bin/python scripts/check_python.py` | PASS: 108 passed, 3 warnings in 11.52s. |
+| `.venv/bin/python scripts/check_ui.py` | PASS: 5 passed in 1.1m. |
+| GitHub Actions run `44866930561` for prior commit `0208ee1` | PASS: completed with conclusion `success`. |
+
 
