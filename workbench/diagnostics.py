@@ -46,7 +46,8 @@ def check_sqlite_health(db_path: Path) -> Dict[str, Any]:
 
 def check_companion_health() -> Dict[str, Any]:
     try:
-        req = urllib.request.Request("http://127.0.0.1:8766/healthz", headers={"X-PAW": "1"})
+        from . import store
+        req = urllib.request.Request("http://127.0.0.1:8766/healthz", headers={"Authorization": "Bearer " + store.current_token()})
         with urllib.request.urlopen(req, timeout=1.0) as resp:
             if resp.status == 200:
                 return {"ready": True, "status": "online"}

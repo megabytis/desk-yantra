@@ -471,3 +471,16 @@ Contributor: **Antigravity (Gemini 3.8 Flash)**, under owner direction. Referenc
 | `.venv/bin/python scripts/check_python.py` | PASS: 138 passed, 10 warnings in 7.82s. |
 | `.venv/bin/python scripts/check_ui.py` | PASS: 6 passed in 49.1s. |
 | GitHub Actions run `44887438772` for commit `75a9423` | PASS: completed with conclusion `success`. |
+
+## Metadata-only diagnostic export and authenticated companion probe — 2026-11-21
+
+Contributor: **OpenAI Codex (GPT-6)**, under owner direction.
+
+The prior export serialized freeform prompts, tasks, incidents, grant fields and provider records, then tried to scrub them with regexes. Unknown secrets could survive. Export schema version 2 now includes fixed platform/readiness fields and aggregate counts only. The companion diagnostic sends the current bearer token to its authenticated `/healthz` endpoint. The private diagnostics screen still contains incident details; downloaded exports should be inspected before sharing.
+
+| Command / check | Actual result this session |
+| --- | --- |
+| `.venv/bin/python scripts/check_python.py tests/test_diagnostics_and_incidents.py -q` | PASS: 7 passed, 7 warnings in 0.42s. |
+| `.venv/bin/python scripts/check_python.py` | PASS: 139 passed, 10 warnings in 7.58s. |
+| `.venv/bin/python scripts/check_ui.py` | PASS: 6 passed in 49.2s. |
+| GitHub Actions for this revision | Pending push and run. |

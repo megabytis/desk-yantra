@@ -1,82 +1,70 @@
-"""Scrubbed diagnostic and configuration export/import.
+"""Metadata-only diagnostic export.
 
-Completely sanitizes secrets, tokens, private keys, passwords, and user paths
-for secure diagnostic sharing or template migration without compromising host security.
+Freeform user and model text cannot be reliably scrubbed with regular expressions.
+Only fixed fields and aggregate counts are exported; raw objects stay in state.
 """
 from __future__ import annotations
 
-import json
-import re
 import time
+from collections import Counter
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
-from .store import all_objects, sensitive_values, redact
+from . import store
 
-EXPORT_SCHEMA_VERSION = 1
-
-
-def scrub_value(val: Any) -> Any:
-    if isinstance(val, str):
-        val = redact(val)
-        val = re.sub(r"(Bearer\s+)[a-zA-Z0-9_\-\./]{15,}", r"\1[SCRUBBED_TOKEN]", val)
-        val = re.sub(r"(sk-[a-zA-Z0-9]{15,})", "[SCRUBBED_API_KEY]", val)
-        val = re.sub(r"/home/[a-zA-Z0-9_\-\.]+", "/home/<user>", val)
-        return val
-    elif isinstance(val, dict):
-        scrubbed = {}
-        for k, v in val.items():
-            if k in ("secret", "api_key", "password", "token", "encryption_key", "key"):
-                scrubbed[k] = "[SCRUBBED]"
-            else:
-                scrubbed[k] = scrub_value(v)
-        return scrubbed
-    elif isinstance(val, list):
-        return [scrub_value(item) for item in val]
-    return val
+EXPORT_SCHEMA_VERSION = 2
 
 
-def create_scrubbed_export(state_path: Path) -> Dict[str, Any]:
+def _counts(kind: str, field: str, allowed: frozenset[str]) -> dict[str, int]:
+    values = Counter()
+    for item in store.all_objects(kind):
+        value = item.get(field)
+        if isinstance(value, str) and value in allowed:
+            values[value] += 1
+        else:
+            values["unknown"] += 1
+    return dict(values)
+
+
+def create_scrubbed_export(state_path: Path) -> dict[str, Any]:
     from .diagnostics import get_diagnostics_snapshot
 
-    providers = []
-    for p in all_objects("providers"):
-        sanitized = dict(p)
-        sanitized.pop("secret", None)
-        sanitized.pop("api_key", None)
-        sanitized["has_key"] = bool(p.get("has_key") or p.get("secret"))
-        providers.append(scrub_value(sanitized))
-
-    agents = [scrub_value(a) for a in all_objects("agents")]
-    grants = [scrub_value(g) for g in all_objects("grants")]
-    runs = [scrub_value(r) for r in all_objects("runs")]
-    incidents = [scrub_value(i) for i in all_objects("incidents")]
-
-    artifacts = []
-    for a in all_objects("artifacts"):
-        artifacts.append({
-            "id": a.get("id"),
-            "name": a.get("name"),
-            "mime": a.get("mime"),
-            "size": a.get("size"),
-            "run": a.get("run"),
-            "created_at": a.get("created_at"),
-        })
-
     snapshot = get_diagnostics_snapshot(state_path)
-
+    database = snapshot["database"]
+    docker = snapshot["docker"]
     return {
         "manifest": {
             "format": "desk-yantra-scrubbed-export",
             "version": EXPORT_SCHEMA_VERSION,
             "exported_at": time.time(),
             "is_scrubbed": True,
+            "contents": "aggregate diagnostic metadata only; no names, paths, prompts, URLs, event bodies or artifact metadata",
         },
-        "diagnostics": scrub_value(snapshot),
-        "providers": providers,
-        "agents": agents,
-        "grants": grants,
-        "runs": runs,
-        "incidents": incidents,
-        "artifacts_metadata": artifacts,
+        "system": {
+            "platform": snapshot["system"]["platform"],
+            "architecture": snapshot["system"]["architecture"],
+            "python_version": snapshot["system"]["python_version"],
+        },
+        "database": {
+            "ready": database.get("ready", False),
+            "schema_version": database.get("schema_version"),
+            "integrity_ok": database.get("integrity") == "ok",
+            "size_bytes": database.get("size_bytes"),
+            "objects_count": database.get("objects_count"),
+            "events_count": database.get("events_count"),
+        },
+        "companion_ready": snapshot["companion"]["ready"],
+        "docker": {"available": docker.get("available", False), "ready": docker.get("ready", False)},
+        "storage": {
+            "artifacts_count": snapshot["storage"]["artifacts_count"],
+            "artifacts_bytes": snapshot["storage"]["artifacts_bytes"],
+        },
+        "counts": {
+            "providers": len(store.all_objects("providers")),
+            "agents": len(store.all_objects("agents")),
+            "grants": len(store.all_objects("grants")),
+            "artifacts": len(store.all_objects("artifacts")),
+            "runs_by_status": _counts("runs", "status", frozenset({"queued", "running", "approval", "paused", "review", "reviewed", "completed", "failed", "stopped", "cancelled", "interrupted"})),
+            "incidents_by_category": _counts("incidents", "category", frozenset({"timeout", "tool_budget", "auth", "rate_limit", "crash", "command_failure", "inference_error", "system"})),
+        },
     }

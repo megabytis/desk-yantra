@@ -125,6 +125,8 @@ Set `PAW_STATE` to a private persistent directory to relocate state. Keep it out
 
 For local readiness checks, `GET http://127.0.0.1:8765/healthz` returns a minimal app/storage status. The companion has `GET http://127.0.0.1:8766/healthz` and requires the current bearer pairing token, as all companion routes do. The launcher waits for both responses before printing the browser address. A healthy response confirms the process and SQLite connection, not Docker, a provider, or a model.
 
+The System Diagnostics export contains aggregate counts and fixed platform/readiness metadata only. It excludes prompts, run text, incident details, names, paths, provider URLs, artifact metadata, and event bodies. Inspect a downloaded export before sharing it; aggregate counts and platform details can still reveal information about your setup. The authenticated diagnostics screen itself can show private incident text and state paths.
+
 ## Publishing
 
 The official source repository is `git@github.com:megabytis/desk-yantra.git`. The project remains under active development and has not passed the production release gates in `PLANNING.md`. Keep `.state`, `.env`, recordings, model weights, and logs out of commits. A GitHub Actions fixture workflow is included.

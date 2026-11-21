@@ -94,6 +94,25 @@ def test_diagnostics_snapshot(clean_state):
     assert len(snapshot["incidents"]["recent"]) == 1
 
 
+def test_companion_diagnostic_uses_current_bearer_token(clean_state, monkeypatch):
+    class HealthyResponse:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return False
+
+    def urlopen(request, timeout):
+        assert request.get_header("Authorization") == "Bearer test-secret-token"
+        assert timeout == 1.0
+        return HealthyResponse()
+
+    monkeypatch.setattr(diagnostics.urllib.request, "urlopen", urlopen)
+    assert diagnostics.check_companion_health()["ready"] is True
+
+
 def test_scrubbed_export_strict_redaction(clean_state):
     # Store provider with secret and key
     store.put("providers", {
@@ -105,9 +124,10 @@ def test_scrubbed_export_strict_redaction(clean_state):
         "api_key": "sk-1234567890abcdefghijklmnop",
         "has_key": True,
     })
-    store.put("agents", {"id": "ag1", "name": "Builder", "system_prompt": "Bearer test-token-secret-123456789"})
+    store.put("agents", {"id": "ag1", "name": "private-agent-name", "system_prompt": "Bearer test-token-secret-123456789"})
     store.put("grants", {"id": "g1", "mode": "folder", "root": "/home/alice/projects/test"})
-    store.put("runs", {"id": "r1", "status": "completed", "task": "Do work"})
+    store.put("runs", {"id": "r1", "status": "completed", "task": "unstructured-private-task-string"})
+    store.put("incidents", {"id": "i1", "category": "system", "message": "unstructured-private-error-string"})
     store.put("artifacts", {"id": "art1", "name": "output.txt", "path": str(clean_state / "artifacts" / "art1"), "size": 100})
 
     export_bundle = scrubbed_export.create_scrubbed_export(clean_state)
@@ -119,14 +139,13 @@ def test_scrubbed_export_strict_redaction(clean_state):
     assert "test-secret-token" not in json_text
     assert "test-token-secret-123456789" not in json_text
     assert "/home/alice" not in json_text
-    assert "/home/<user>" in json_text
-    assert "[SCRUBBED_TOKEN]" in json_text
-
-    prov = export_bundle["providers"][0]
-    assert prov["has_key"] is True
-    assert "secret" not in prov or prov["secret"] == "[SCRUBBED]"
+    for private in ("private-agent-name", "unstructured-private-task-string", "unstructured-private-error-string", "output.txt", "prov1", "ag1", "g1", "r1", "/home/<user>"):
+        assert private not in json_text
+    assert export_bundle["counts"]["providers"] == 1
+    assert export_bundle["counts"]["runs_by_status"] == {"completed": 1}
     assert export_bundle["manifest"]["is_scrubbed"] is True
     assert export_bundle["manifest"]["format"] == "desk-yantra-scrubbed-export"
+    assert export_bundle["manifest"]["version"] == 2
 
 
 def test_retention_inspection_and_pruning(clean_state):
