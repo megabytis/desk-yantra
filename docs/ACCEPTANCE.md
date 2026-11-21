@@ -530,3 +530,7 @@ Added `/?preview=1`, a standalone illustrative walkthrough available before pair
 | Visual review | Desktop 1440px and phone 375px screenshots captured and inspected locally. |
 | Python suite | Not rerun: frontend and documentation only. Prior 144-test run belongs to the previous code milestone. |
 | GitHub Actions run `44896325395` for commit `ee1f32a` | PASS: completed with conclusion `success`. |
+
+## Runtime reuse audit — 2026-11-21
+
+Contributor: **OpenAI Codex (GPT-6)**, under owner direction. Reviewed the current OpenHands SDK integration and local Hermes Agent `32dbc1dcda` and OpenMausBot `4e22b4d9b` runtime, approval and licensing seams. The concrete keep/reuse/replace decision is in `docs/REUSE-DECISION.md`. This was read-only source review and documentation; no tests were run and no external source was copied. Prior product-preview CI run `44896325395` completed successfully.
