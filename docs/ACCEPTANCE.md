@@ -497,4 +497,4 @@ The initial retention implementation deleted every event for older terminal runs
 | `.venv/bin/python scripts/check_python.py` | PASS: 141 passed, 10 warnings in 7.66s. |
 | `npm run build` | PASS: TypeScript and Vite build in 1.01s. |
 | `.venv/bin/python scripts/check_ui.py` | PASS: 6 passed in 1.1m. |
-| GitHub Actions for this revision | Pending push and run. |
+| GitHub Actions run `44892748538` for commit `e239b9a` | PASS: completed with conclusion `success`. |
