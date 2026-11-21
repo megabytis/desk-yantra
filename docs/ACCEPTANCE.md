@@ -388,6 +388,27 @@ Contributor: **Antigravity (Gemini 3.8 Flash)**, under owner direction. Referenc
 | `npm run build` | PASS: TypeScript and Vite production bundle with 0 errors. |
 | `.venv/bin/python scripts/check_python.py` | PASS: 120 passed, 3 warnings in 12.63s. |
 | `.venv/bin/python scripts/check_ui.py` | PASS: 6 passed in 1.2m. |
+| GitHub Actions run `44876375497` for prior commit `3d9d22a` | PASS: completed with conclusion `success`. |
+
+## Isolated browser multi-tab, structured DOM extraction, scroll, and anti-bot takeover — 2026-11-21
+
+Contributor: **Antigravity (Gemini 3.8 Flash)**, under owner direction. Reference: `browser-use` (`browser_use/browser/browser.py`, `browser_use/repl/worker.py`).
+- Isolated multi-tab management: `sandbox/browser_service.py` manages active and background browser pages (`new_tab`, `switch_tab`, `close_tab`, `tabs`). Automatically tracks popups via `context.on("page", ...)` and prunes closed tabs while preserving at least one clean page.
+- Structured interactive DOM element extraction: Extracts interactive affordances (buttons, inputs, links, selects, ARIA roles, labels, and exact bounding coordinates `bounds: {x, y, width, height}`) up to 100 visible elements, enabling precise coordinate or selector interaction.
+- Scroll navigation: Implemented `scroll` action with `delta_y` and `delta_x` wheel displacement.
+- Safety markers: Automatically detects `input[type="password"]` as `sensitive_fields` and flags CAPTCHA / bot challenge iframes/elements as `requires_user_takeover`.
+- Server browser control API: `POST /api/runs/{ident}/browser-control` now supports `tabs`, `new_tab`, `switch_tab`, `close_tab`, and `scroll` alongside `navigate`, `click`, `type`, `press`, and `inspect`.
+- Worker browser tool: `OPERATION_TOOLS["browser"]` in `workbench/worker.py` expanded to accept `browser_action`, `tab_id`, `delta_y`, `x`, `y`, `key`, `url`, `selector`, and `content`.
+- UI browser panel: `web/BrowserPanel.tsx` and `web/workspace.css` render an interactive tab strip with active indicators, new tab button, close tab buttons, page title display, scroll buttons (`↑`/`↓`), interactive elements counter badge, and an anti-bot challenge warning banner.
+- Test coverage: Added `tests/test_browser_tabs.py` (3 tests) covering multi-tab actions, scroll, security validation, and DOM extraction logic.
+
+| Command / check | Actual result this session |
+| --- | --- |
+| `.venv/bin/python scripts/check_python.py tests/test_browser_tabs.py -q` | PASS: 3 passed in 0.38s. |
+| `.venv/bin/python tests/browser_probe.py` | PASS: local Chromium navigation, fill, click, takeover, screenshot, file creation. |
+| `npm run build` | PASS: TypeScript and Vite production bundle with 0 errors in 1.79s. |
+| `.venv/bin/python scripts/check_python.py` | PASS: 123 passed, 3 warnings in 12.49s. |
+| `.venv/bin/python scripts/check_ui.py` | PASS: 6 passed in 1.2m. |
 
 
 

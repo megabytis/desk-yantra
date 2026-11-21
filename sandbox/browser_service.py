@@ -64,37 +64,199 @@ def guard_websocket(route):
         route.close(code=1008, reason="Blocked by workspace network policy")
 
 
+EXTRACT_DOM_SCRIPT = """() => {
+    const interactive = [];
+    const selectors = 'button, a[href], input, select, textarea, [role="button"], [role="link"], [role="checkbox"], [role="radio"], [role="combobox"], [role="tab"], [role="menuitem"], [onclick], [tabindex="0"]';
+    const elements = document.querySelectorAll(selectors);
+    let idx = 0;
+    for (const el of elements) {
+        if (idx >= 100) break;
+        const rect = el.getBoundingClientRect();
+        const style = window.getComputedStyle(el);
+        if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0' || rect.width <= 0 || rect.height <= 0) {
+            continue;
+        }
+        const tag = el.tagName.toLowerCase();
+        const role = el.getAttribute('role') || tag;
+        const type = el.getAttribute('type') || '';
+        const name = el.getAttribute('name') || '';
+        const id = el.id ? '#' + el.id : '';
+        const ariaLabel = el.getAttribute('aria-label') || '';
+        const placeholder = el.getAttribute('placeholder') || '';
+        const text = (el.innerText || el.textContent || el.value || '').trim().slice(0, 80);
+        const href = el.getAttribute('href') || '';
+        const disabled = el.hasAttribute('disabled') || el.getAttribute('aria-disabled') === 'true';
+
+        let selector = '';
+        if (el.id) selector = '#' + el.id;
+        else if (name) selector = tag + '[name="' + name + '"]';
+        else if (ariaLabel) selector = tag + '[aria-label="' + ariaLabel + '"]';
+        else if (text && (tag === 'button' || tag === 'a')) selector = tag + ':has-text("' + text.slice(0, 20).replace(/"/g, '\\\\"') + '")';
+        else selector = tag;
+
+        interactive.push({
+            index: idx++,
+            tag: tag,
+            role: role,
+            type: type,
+            selector: selector,
+            id: el.id || undefined,
+            name: name || undefined,
+            text: text || undefined,
+            aria_label: ariaLabel || undefined,
+            placeholder: placeholder || undefined,
+            href: href || undefined,
+            disabled: disabled,
+            bounds: {
+                x: Math.round(rect.left + rect.width / 2),
+                y: Math.round(rect.top + rect.height / 2),
+                width: Math.round(rect.width),
+                height: Math.round(rect.height)
+            }
+        });
+    }
+    const hasPassword = !!document.querySelector('input[type="password"]');
+    const hasCaptcha = !!document.querySelector('iframe[src*="recaptcha"], iframe[src*="hcaptcha"], iframe[src*="turnstile"], .g-recaptcha, .cf-turnstile');
+    return {
+        elements: interactive,
+        has_password: hasPassword,
+        has_captcha: hasCaptcha
+    };
+}"""
+
+browser_state = {
+    "playwright": None,
+    "browser": None,
+    "context": None,
+    "pages": [],
+    "active_index": 0,
+}
+
+
+def get_active_page():
+    ctx = browser_state["context"]
+    # Prune closed pages
+    browser_state["pages"] = [p for p in browser_state["pages"] if not p.is_closed()]
+    if not browser_state["pages"]:
+        if ctx:
+            p = ctx.new_page()
+            browser_state["pages"] = [p]
+            browser_state["active_index"] = 0
+        else:
+            return None
+    elif browser_state["active_index"] >= len(browser_state["pages"]):
+        browser_state["active_index"] = max(0, len(browser_state["pages"]) - 1)
+    return browser_state["pages"][browser_state["active_index"]]
+
+
+def get_tabs_summary():
+    tabs = []
+    browser_state["pages"] = [p for p in browser_state["pages"] if not p.is_closed()]
+    for idx, p in enumerate(browser_state["pages"]):
+        try:
+            title = p.title()
+        except Exception:
+            title = ""
+        try:
+            url = p.url
+        except Exception:
+            url = ""
+        tabs.append({
+            "id": idx,
+            "title": title or "Untitled",
+            "url": url,
+            "active": idx == browser_state["active_index"]
+        })
+    return tabs
+
+
+def on_page_opened(p):
+    if p not in browser_state["pages"]:
+        browser_state["pages"].append(p)
+
+
 class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
-        global page
         try:
-            action = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+            content_length = int(self.headers.get("Content-Length", 0))
+            raw_body = self.rfile.read(content_length)
+            action = json.loads(raw_body) if raw_body else {}
             policy["domains"] = action.get("allowed_domains") or []
             policy["blocked"] = []
-            if action.get("url"):
-                page.goto(action["url"], wait_until="domcontentloaded", timeout=30000)
-            operation=action.get("browser_action","inspect")
-            if operation=="click":
-                page.mouse.click(float(action["x"]),float(action["y"]))
-            elif operation=="type":
+
+            operation = action.get("browser_action", "inspect")
+            page = get_active_page()
+
+            if operation == "new_tab":
+                new_p = browser_state["context"].new_page()
+                browser_state["pages"].append(new_p)
+                browser_state["active_index"] = len(browser_state["pages"]) - 1
+                page = new_p
+                if action.get("url"):
+                    page.goto(action["url"], wait_until="domcontentloaded", timeout=30000)
+            elif operation == "switch_tab":
+                target_id = int(action.get("tab_id", action.get("index", 0)))
+                browser_state["pages"] = [p for p in browser_state["pages"] if not p.is_closed()]
+                if 0 <= target_id < len(browser_state["pages"]):
+                    browser_state["active_index"] = target_id
+                page = get_active_page()
+                page.bring_to_front()
+            elif operation == "close_tab":
+                target_id = int(action.get("tab_id", action.get("index", browser_state["active_index"])))
+                browser_state["pages"] = [p for p in browser_state["pages"] if not p.is_closed()]
+                if 0 <= target_id < len(browser_state["pages"]):
+                    to_close = browser_state["pages"][target_id]
+                    to_close.close()
+                page = get_active_page()
+            elif operation == "scroll":
+                delta_y = float(action.get("delta_y", action.get("y", 300)))
+                delta_x = float(action.get("delta_x", action.get("x", 0)))
+                page.mouse.wheel(delta_x, delta_y)
+            elif operation == "click":
+                page.mouse.click(float(action["x"]), float(action["y"]))
+            elif operation == "type":
                 page.keyboard.insert_text(action["content"])
-            elif operation=="press":
+            elif operation == "press":
                 page.keyboard.press(action["key"])
+            elif action.get("url") and operation != "new_tab":
+                page.goto(action["url"], wait_until="domcontentloaded", timeout=30000)
+
             if action.get("selector"):
                 if action.get("content"):
                     page.locator(action["selector"]).fill(action["content"])
                 else:
                     page.locator(action["selector"]).click()
+
             if policy["blocked"]:
                 raise ValueError("Browser request blocked by workspace network policy")
-            page.screenshot(path=str(Path(os.environ.get("PAW_SANDBOX_ROOT", "/workspace")) / "browser.png"))
-            result = {"url": page.url, "text": page.inner_text("body")[:100000], "screenshot": "browser.png"}
+
+            # Screenshot
+            screenshot_path = Path(os.environ.get("PAW_SANDBOX_ROOT", "/workspace")) / "browser.png"
+            page.screenshot(path=str(screenshot_path))
+
+            # Extract DOM elements
+            try:
+                dom_data = page.evaluate(EXTRACT_DOM_SCRIPT)
+            except Exception:
+                dom_data = {"elements": [], "has_password": False, "has_captcha": False}
+
+            tabs = get_tabs_summary()
+            result = {
+                "url": page.url,
+                "title": page.title() if not page.is_closed() else "",
+                "tabs": tabs,
+                "active_tab": browser_state["active_index"],
+                "text": page.inner_text("body")[:100000] if not page.is_closed() else "",
+                "elements": dom_data.get("elements", []),
+                "requires_user_takeover": dom_data.get("has_captcha", False),
+                "sensitive_fields": ["password"] if dom_data.get("has_password", False) else [],
+                "screenshot": "browser.png"
+            }
             self.send_response(200)
         except Exception as error:
             result = {"error": "Browser request or redirect blocked by workspace network policy" if policy["blocked"] else str(error)}
             try:
-                page.close()
-                page = context.new_page()
+                page = get_active_page()
             except Exception:
                 pass
             self.send_response(400)
@@ -109,5 +271,13 @@ if __name__ == "__main__":
         context = browser.new_context(accept_downloads=False, service_workers="block")
         context.route("**/*", guard_request)
         context.route_web_socket("**/*", guard_websocket)
-        page = context.new_page()
+        first_page = context.new_page()
+        browser_state.update({
+            "playwright": playwright,
+            "browser": browser,
+            "context": context,
+            "pages": [first_page],
+            "active_index": 0,
+        })
+        context.on("page", on_page_opened)
         HTTPServer(("127.0.0.1", int(os.environ.get("PAW_BROWSER_PORT", "9111"))), Handler).serve_forever()

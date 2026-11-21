@@ -595,24 +595,29 @@ def browser_control(ident:str,body:dict):
         return {"status":"completed"}
     if get("runs",ident)["status"]!="paused":
         raise ValueError("Take browser control before sending actions")
-    if operation not in ("begin","inspect","navigate","click","type","press"):
+    if operation not in ("begin", "inspect", "navigate", "click", "type", "press", "scroll", "new_tab", "switch_tab", "close_tab", "tabs"):
         raise ValueError("Unsupported browser control action")
-    action={"op":"browser","manual":True,"browser_action":operation if operation in ("click","type","press") else "inspect"}
-    if operation=="navigate":
-        url=str(body.get("url",""))
-        if httpx.URL(url).scheme not in ("http","https"):
+    action = {"op": "browser", "manual": True, "browser_action": operation if operation in ("click", "type", "press", "scroll", "new_tab", "switch_tab", "close_tab", "tabs") else "inspect"}
+    if operation in ("navigate", "new_tab") and body.get("url"):
+        url = str(body.get("url", ""))
+        if httpx.URL(url).scheme not in ("http", "https"):
             raise ValueError("Browser control accepts HTTP and HTTPS navigation URLs")
-        action["url"]=url
-    if operation=="click":
-        action["x"]=max(0,min(10000,int(body["x"])))
-        action["y"]=max(0,min(10000,int(body["y"])))
-    if operation=="type":
-        action["content"]=str(body.get("text",""))[:10000]
-    if operation=="press":
-        key=str(body.get("key",""))
-        if key not in ("Enter","Tab","Backspace","Escape","ArrowUp","ArrowDown","ArrowLeft","ArrowRight"):
+        action["url"] = url
+    if operation == "click":
+        action["x"] = max(0, min(10000, int(body["x"])))
+        action["y"] = max(0, min(10000, int(body["y"])))
+    if operation == "type":
+        action["content"] = str(body.get("text", ""))[:10000]
+    if operation == "press":
+        key = str(body.get("key", ""))
+        if key not in ("Enter", "Tab", "Backspace", "Escape", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"):
             raise ValueError("Unsupported browser key")
-        action["key"]=key
+        action["key"] = key
+    if operation == "scroll":
+        action["delta_y"] = float(body.get("delta_y", 300))
+        action["delta_x"] = float(body.get("delta_x", 0))
+    if operation in ("switch_tab", "close_tab"):
+        action["tab_id"] = int(body.get("tab_id", 0))
     approval={"id":str(uuid.uuid4()),"run":ident,"action":action,"status":"approved","source":"explicit-user-browser-control"}
     put("approvals",approval)
     event(ident,"browser_control_action",action)
