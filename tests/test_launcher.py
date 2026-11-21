@@ -30,9 +30,11 @@ def wait_until(predicate, timeout=20):
 def test_launcher_closes_both_services_when_one_stops(tmp_path, ending):
     if port_open(8765) or port_open(8766):
         pytest.skip("Personal Desk Yantra service occupies the fixed loopback ports")
-    environment = os.environ | {"PAW_STATE": str(tmp_path / "state"), "LITELLM_LOCAL_MODEL_COST_MAP": "True"}
+    environment = os.environ | {"PAW_STATE": str(tmp_path / "state"), "PAW_SERVICE_MODE": "1", "LITELLM_LOCAL_MODEL_COST_MAP": "True"}
+    log_path = tmp_path / "launcher.log"
+    log = log_path.open("wb")
     process = subprocess.Popen([sys.executable, "-m", "workbench"], env=environment,
-                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                               stdout=log, stderr=log,
                                start_new_session=True)
     try:
         assert wait_until(lambda: process.poll() is not None or (port_open(8765) and port_open(8766)))
@@ -53,6 +55,8 @@ def test_launcher_closes_both_services_when_one_stops(tmp_path, ending):
         except ProcessLookupError:
             pass
         process.wait(timeout=5)
+        log.close()
+    assert "Browser pairing token:" not in log_path.read_text()
 
 
 def test_launcher_refuses_occupied_port_without_starting_companion(tmp_path):

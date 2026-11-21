@@ -20,6 +20,20 @@ Open http://127.0.0.1:8765 and enter the launch token printed in your terminal a
 uv run python -m workbench stop
 ```
 
+### Optional systemd user service
+
+From this checkout, stop any foreground Desk Yantra process, then render a user unit using the **same existing** private state path you already use. It must contain the pairing token and encryption key. The default below is this checkout's `.state`; change `--state` if you set `PAW_STATE` elsewhere.
+
+```sh
+mkdir -p "$HOME/.config/systemd/user"
+python scripts/render_user_service.py --state "$PWD/.state" > "$HOME/.config/systemd/user/desk-yantra.service"
+systemctl --user daemon-reload
+systemctl --user start desk-yantra.service
+PAW_STATE="$PWD/.state" .venv/bin/python -m workbench token
+```
+
+The last command prints the private browser pairing token only in your terminal; the service suppresses it in the journal. Use `systemctl --user status desk-yantra.service` to inspect startup. To start it on each user login, run `systemctl --user enable desk-yantra.service`. Hyprland screen/input tools may need the session variables imported with `systemctl --user import-environment WAYLAND_DISPLAY XDG_RUNTIME_DIR HYPRLAND_INSTANCE_SIGNATURE` before starting the service. Stop and remove the unit with `systemctl --user disable --now desk-yantra.service`, delete the unit file, then run `systemctl --user daemon-reload`. This leaves private state intact. Paths containing whitespace or `%` are rejected by the renderer.
+
 1. **Settings & providers → Add connection**: name a connection, choose its type, enter its base URL/key, save, refresh models, select a model, test inference, and set the default.
 2. **Computer access → Add workspace**: create a sandbox or host workspace grant. For host file work choose an existing folder. Shell permission grants account-wide execution; it is not confined by the folder.
 3. **Agents**: create a profile with instructions, optional model override, tools and allowed workspace grants.

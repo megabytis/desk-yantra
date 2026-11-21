@@ -81,7 +81,8 @@ def serve():
             time.sleep(.2)
         if not stopping and result == 0:
             print("Workbench: http://127.0.0.1:8765", flush=True)
-            print("Browser pairing token: " + store.TOKEN, flush=True)
+            if os.environ.get("PAW_SERVICE_MODE") != "1":
+                print("Browser pairing token: " + store.TOKEN, flush=True)
         while not stopping and result == 0:
             failed = next(((process, process.poll()) for process in children if process.poll() is not None), None)
             if failed:
@@ -110,7 +111,7 @@ def serve():
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("command", choices=["serve", "stop", "backup", "verify-backup", "restore"], default="serve", nargs="?")
+    parser.add_argument("command", choices=["serve", "stop", "token", "backup", "verify-backup", "restore"], default="serve", nargs="?")
     parser.add_argument("path", nargs="?", help="Private backup directory or fresh restore state directory")
     args = parser.parse_args()
     if args.command in ("backup", "verify-backup", "restore"):
@@ -133,6 +134,10 @@ def main():
         count, unconfirmed = stop_active_runs()
         print(f"Local stop requested for {count} active runs")
         return 1 if unconfirmed else 0
+    if args.command == "token":
+        from .store import current_token
+        print(current_token())
+        return 0
     return serve()
 
 

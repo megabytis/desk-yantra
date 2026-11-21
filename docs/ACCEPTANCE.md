@@ -338,4 +338,15 @@ Contributor: **OpenAI Codex (GPT-6)**, under owner direction. Provider, agent an
 | `.venv/bin/python scripts/check_ui.py` | PASS: 6 passed in 1.2m. |
 | GitHub Actions run `44869541094` for prior commit `c7fa00d` | PASS: completed with conclusion `success`. |
 
+## Optional systemd user service artifact — 2026-11-21
+
+Contributor: **OpenAI Codex (GPT-6)**, under owner direction. `scripts/render_user_service.py` renders a unit for this checkout's virtualenv and an explicit existing private state path, refusing ambiguous whitespace/`%` paths and missing state. `workbench/__main__.py` suppresses launch-token output when `PAW_SERVICE_MODE=1`; `workbench token` reads the selected state and prints the token on demand. `tests/test_user_service.py` covers the unit and token command, while launcher subprocess tests confirm service-mode logs omit the token. README documents manual setup and uninstall. No unit was installed or enabled in the owner's user session; login, reboot and desktop environment propagation remain unverified.
+
+| Command / check | Actual result this session |
+| --- | --- |
+| `.venv/bin/python scripts/check_python.py tests/test_user_service.py tests/test_launcher.py -q` | PASS: 6 passed in 3.47s after existing-state validation. |
+| `systemd-analyze verify` on a temporary rendered unit | PASS: exit 0 after rerun outside sandbox socket restrictions. |
+| `.venv/bin/python scripts/check_python.py` | PASS: 113 passed, 3 warnings in 12.00s. |
+| GitHub Actions run `44869862926` for prior commit `fd21aac` | PASS: completed with conclusion `success`. |
+
 
