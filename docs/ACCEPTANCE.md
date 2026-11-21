@@ -483,4 +483,4 @@ The prior export serialized freeform prompts, tasks, incidents, grant fields and
 | `.venv/bin/python scripts/check_python.py tests/test_diagnostics_and_incidents.py -q` | PASS: 7 passed, 7 warnings in 0.42s. |
 | `.venv/bin/python scripts/check_python.py` | PASS: 139 passed, 10 warnings in 7.58s. |
 | `.venv/bin/python scripts/check_ui.py` | PASS: 6 passed in 49.2s. |
-| GitHub Actions for this revision | Pending push and run. |
+| GitHub Actions run `44890699258` for commit `1191d86` | PASS: completed with conclusion `success`. |
