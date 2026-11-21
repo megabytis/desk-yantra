@@ -1,8 +1,8 @@
 {
-  "name": "openmausbot",
+  "name": "desk-yantra",
   "private": true,
   "version": "0.1.173",
-  "description": "A local-first chat app for running a team of AI agents.",
+  "description": "A self-hosted personal agent workspace.",
   "homepage": "https://github.com/milind-soni/OpenMausBot",
   "repository": {
     "type": "git",

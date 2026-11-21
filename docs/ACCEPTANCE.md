@@ -587,3 +587,35 @@ Contributor: **OpenAI Codex (GPT-6)**. Imported tracked source from OpenMausBot 
 | Branding and release | NOT READY: copied UI still includes upstream names and mascot assets. `next/` is an unreleased development import. Browser UI smoke is recorded below; real OpenAI, clean install and Arch/Hyprland effects remain unverified. |
 
 Browser smoke after the import commit: started the copied fixture server and Vite UI with `OMB_PORT=19634`, opened `http://127.0.0.1:5199/` in installed Playwright Chromium, and observed a rendered chat UI with one textbox and the seeded fixture conversation. The document title was **MausBot** and the heading **Meet MausBot**, proving visible rebranding remains. Vite reported font URLs outside its serving allow list because this checkout reuses the upstream `node_modules` symlink; normal standalone install still needs validation. Stopped Vite and the fixture; fixture state was removed. This smoke did not send a browser message or use a real provider.
+
+## Desk Yantra rebranding, standalone next/ build, and isolated UI verification — 2026-11-21
+
+Contributor: **Antigravity (Gemini 3.8 Flash)**, under owner direction.
+- **Rebranding in `next/`**:
+  - Rebranded product name to "Desk Yantra" in `next/src/lib/brand.ts`, `next/server/brand.ts`, `next/package.json`, `next/index.html`, `next/rail.html`, and `next/public/manifest.webmanifest`.
+  - Replaced default bot name with "Desk Yantra" in `next/packages/phone-protocol/src/default-bot.ts`.
+  - Replaced upstream cursor mascot with Desk Yantra geometric diamond emblem (`◈`) in `next/packages/phone-protocol/src/mascot-bodies.ts` and `next/public/app-icon.svg`. Generated matching icons: `app-icon-192.png`, `app-icon-512.png`, and `apple-touch-icon.png`.
+  - Updated user-facing notices in `next/src/locales/en.json`.
+  - Updated tests: `next/src/lib/brand.test.ts`, `next/server/brand.test.ts`, `next/src/lib/title-at-boot.test.ts`, `next/src/components/onboarding/WelcomeFlow.test.ts` (all 35 vitest tests pass).
+- **Standalone dependency install & build**:
+  - Removed `next/node_modules` symlink to reference repository.
+  - Ran clean standalone `pnpm install --frozen-lockfile` in `next/`: 1006 packages installed cleanly in 4.8s into real directory `next/node_modules`.
+  - Ran `NODE_OPTIONS=--max-old-space-size=4096 pnpm build`: transformed 6056 modules and built production bundle in 48.77s with 0 errors.
+- **Isolated browser UI fixture**:
+  - Launched isolated fixture service with dynamic port (`OMB_PORT=20610`), ran Vite UI on port 5199.
+  - Executed Playwright Chromium headless smoke: verified document title `"Desk Yantra"` and onboarding heading `"Meet Desk Yantra"`.
+  - Confirmed Vite font allow-list warning resolved with standalone install. Clean shutdown with temporary data directories purged.
+- **Workbench UI regression suite**:
+  - Fixed persistent `addInitScript` re-execution in `tests/ui/journey.spec.ts` and multi-tab session storage propagation in `tests/ui/control.spec.ts`.
+  - Full suite `scripts/check_ui.py`: 8 passed in 1.3m across `control.spec.ts`, `journey.spec.ts`, `preview.spec.ts`, and `settings.spec.ts`.
+
+| Command / check | Actual result this session |
+| --- | --- |
+| `pnpm install --frozen-lockfile` in `next/` | PASS: 1006 packages installed in 4.8s into real `next/node_modules`. |
+| `NODE_OPTIONS=--max-old-space-size=4096 pnpm build` in `next/` | PASS: 6056 modules transformed, production bundle built in 48.77s. |
+| `pnpm exec vitest run brand WelcomeFlow title-at-boot` in `next/` | PASS: 4 test files, 35 passed in 6.76s. |
+| Isolated Playwright UI smoke on `http://127.0.0.1:5199/` | PASS: Title `"Desk Yantra"`, heading `"Meet Desk Yantra"`, no font warnings, clean shutdown. |
+| `.venv/bin/python scripts/check_python.py` | PASS: 144 passed, 10 warnings in 15.63s. |
+| `.venv/bin/python tests/browser_probe.py` | PASS: local Chromium navigation, fill, click, screenshot, file creation. |
+| `.venv/bin/python tests/browser_network_probe.py` | PASS: redirect/resource/WebSocket blocked, allowed page loaded. |
+| `.venv/bin/python scripts/check_ui.py` | PASS: 8 passed in 1.3m. |

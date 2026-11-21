@@ -15,6 +15,7 @@ async function post(page: Page, path: string, body: object) {
 }
 async function state(page: Page) {return page.evaluate(() => fetch('/api/state').then(response => response.json()));}
 async function setup(page: Page) {
+  await page.context().addInitScript(()=>sessionStorage.setItem('paw.showTestData','true'));
   await page.addInitScript(()=>sessionStorage.setItem('paw.showTestData','true'));
   await page.goto('/');
   await page.getByLabel('Launch token').fill(readFileSync(join(process.env.PAW_STATE || '.state','token'),'utf8').trim());
@@ -44,6 +45,7 @@ test('fixture: delegation survives tab close and reconnects both histories',asyn
   const child = (await state(page)).runs.find((run:any) => run.parent === parent.id);
   await page.close();
   const reopened = await context.newPage();
+  await reopened.addInitScript(()=>sessionStorage.setItem('paw.showTestData','true'));
   await reopened.goto('/');
   await openRun(reopened,child.id);
   await reopened.getByRole('button',{name:'Approve this action',exact:true}).click({timeout:45000});

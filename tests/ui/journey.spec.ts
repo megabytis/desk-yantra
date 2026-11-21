@@ -14,7 +14,7 @@ test('fixture: UI connection, model discovery, real host edit and artifact', asy
   execFileSync('git',['init',root]);
   writeFileSync(join(root,'maths.py'),'def add(left, right):\n    return left - right\n');
   writeFileSync(join(root,'test_math.py'),'import unittest\nfrom maths import add\nclass TestMath(unittest.TestCase):\n    def test_add(self):\n        self.assertEqual(add(2, 3), 5)\n');
-  await page.addInitScript(()=>sessionStorage.setItem('paw.showTestData','true'));
+  await page.addInitScript(()=>{ if(sessionStorage.getItem('paw.testInit')===null){ sessionStorage.setItem('paw.testInit','1'); sessionStorage.setItem('paw.showTestData','true'); } });
   await page.goto('/');
   await page.getByLabel('Launch token').fill(readFileSync(join(process.env.PAW_STATE || '.state','token'),'utf8').trim());
   await page.getByRole('button',{name:'Connect to workbench'}).click();
@@ -72,7 +72,7 @@ test('fixture: UI connection, model discovery, real host edit and artifact', asy
   expect(readFileSync((await download.path())!,'utf8')).toContain('return left + right');
   await page.evaluate(()=>{localStorage.setItem('paw.showTestData','true');sessionStorage.removeItem('paw.showTestData');});
   await page.reload();
-  await page.getByRole('button',{name:'Agents',exact:true}).click();
+  await page.getByRole('button',{name:/Agents/}).first().click();
   await expect(page.getByRole('heading',{name:agentName})).toHaveCount(0);
   await page.getByLabel('Show test records').check();
   await expect(page.getByRole('heading',{name:agentName})).toBeVisible();
