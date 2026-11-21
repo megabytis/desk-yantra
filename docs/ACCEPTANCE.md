@@ -529,4 +529,4 @@ Added `/?preview=1`, a standalone illustrative walkthrough available before pair
 | `.venv/bin/python scripts/check_ui.py` | PASS: 8 passed in 1.3m. |
 | Visual review | Desktop 1440px and phone 375px screenshots captured and inspected locally. |
 | Python suite | Not rerun: frontend and documentation only. Prior 144-test run belongs to the previous code milestone. |
-| GitHub Actions for this revision | Pending push and run. |
+| GitHub Actions run `44896325395` for commit `ee1f32a` | PASS: completed with conclusion `success`. |
