@@ -724,3 +724,17 @@ Contributor: **Antigravity (Gemini 3.8 Flash)**, under owner direction.
 | `scripts/launch_desk_yantra.sh --help` | PASS: Prints clean Desk Yantra CLI usage. |
 | `git push origin main` | PASS: Commit `16a7093` pushed to `origin/main`. |
 | GitHub Actions CI run `44916732041` | PASS: Workflow `fixture-tests` completed with conclusion `success`. |
+
+## Upstream identity and telemetry correction — 2026-11-21
+
+Contributor: **OpenAI Codex (GPT-6)**. User's live bot answered that it worked inside OpenMausBot. The central system prompt explicitly taught that identity. Replaced the model-facing identity and default-bot text with Desk Yantra; replaced the imported PostHog client with a no-op, removed its package dependency and opt-in controls, and changed central app/help/feedback links to the Desk Yantra repository. These changes do **not** prove complete upstream independence: remaining Cloud/account/relay/report/update endpoints and historical private conversation memory are listed in `docs/UPSTREAM-INDEPENDENCE.md`.
+
+| Check | Actual result |
+| --- | --- |
+| `pnpm exec tsc -b --pretty false` | PASS after the prompt and analytics changes. |
+| `pnpm exec vitest run src/lib/analytics.test.ts server/system-prompt.test.ts server/default-bot.test.ts` | Initial run failed on old-brand expectations; updated the affected tests. Final focused run: 3 files, 86 tests passed in 6.96s. |
+| `NODE_OPTIONS=--max-old-space-size=4096 pnpm build` | PASS: 6054 modules transformed, Vite built in 45.62s. |
+| `pnpm build:server` | PASS: bundled server entry points. |
+| Network capture / live provider reply | Not run; no claim that all upstream endpoints are removed. |
+
+The old PostHog wire and event-capture tests failed as expected after analytics was disabled; those three telemetry-only suites were removed. A final TypeScript check passed after dependency removal. The local Arch archive built before this correction was deleted so it cannot be used as a current release artifact. There are still 14 non-test source files with `openmausbot.com` references across browser, server and Electron code; their behavior requires the endpoint audit in `docs/UPSTREAM-INDEPENDENCE.md`.
