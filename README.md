@@ -2,6 +2,8 @@
 
 A self-hosted personal agent workspace with a React/TypeScript browser interface, Python OpenHands SDK workers, isolated Docker execution, and a separately authenticated Linux companion. See [acceptance status](docs/ACCEPTANCE.md) for actual live verification and remaining gaps. The deployment supports a single trusted local user.
 
+To inspect the proposed product experience before setting up a model, open `http://127.0.0.1:8765/?preview=1` while the app is running. The clickable [product preview](docs/PRODUCT-PREVIEW.md) uses illustrative data only and makes no API calls or changes. It is reachable from the pairing page and the chat sidebar.
+
 ## Arch Linux installation
 
 Install Python tooling, Node and Docker using your normal system administration workflow:

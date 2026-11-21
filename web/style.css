@@ -508,3 +508,6 @@ select:focus-visible {
 }
 
 .layout > main { margin: 0 auto; align-self: start; }
+.preview-entry{display:inline-block;margin-top:22px;color:#c9e8b8;font-size:12px;text-decoration:underline;text-underline-offset:4px}
+.preview-sidebar-link{display:block;padding:10px 12px;color:#bfe0b7;text-decoration:none;font-size:12px;border:1px solid #405844;border-radius:7px;margin-bottom:10px}
+.preview-sidebar-link:hover{background:#29402e}

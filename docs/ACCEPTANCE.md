@@ -515,3 +515,18 @@ The first full browser run caught the expected failing-test step in the repair f
 | `.venv/bin/python scripts/check_ui.py` | Initial run: 5 passed, 1 failed; fixture repair's pre-edit failing test was classified as unresolved. |
 | `.venv/bin/python scripts/check_ui.py tests/ui/journey.spec.ts` | PASS: 1 passed in 24.3s after correction. |
 | GitHub Actions run `44894738637` for commit `01a6069` | PASS: completed with conclusion `success`. |
+
+## Clickable product-direction preview — 2026-11-21
+
+Contributor: **OpenAI Codex (GPT-6)**, under owner direction.
+
+Added `/?preview=1`, a standalone illustrative walkthrough available before pairing. It presents the intended setup, bot investigation, exact edit approval/denial, result evidence and uncertain-work recovery flow. The preview performs no real actions and the browser test observed no `/api/` requests. Links from pairing and chat make it easy to open. The mobile layout was inspected at 375px and corrected after the first screenshot showed the global footer positioning over content. OpenMausBot revision `4e22b4d9b` supplied product framing only; no source, assets or branding were copied. The walkthrough is for owner feedback, not evidence that every illustrated flow has been live-validated.
+
+| Command / check | Actual result this session |
+| --- | --- |
+| `npm run build` | PASS: TypeScript and Vite build in 1.89s. |
+| `.venv/bin/python scripts/check_ui.py tests/ui/preview.spec.ts` | PASS: 2 passed in 2.4s; navigation, decisions, no API calls and phone-width check. |
+| `.venv/bin/python scripts/check_ui.py` | PASS: 8 passed in 1.3m. |
+| Visual review | Desktop 1440px and phone 375px screenshots captured and inspected locally. |
+| Python suite | Not rerun: frontend and documentation only. Prior 144-test run belongs to the previous code milestone. |
+| GitHub Actions for this revision | Pending push and run. |
