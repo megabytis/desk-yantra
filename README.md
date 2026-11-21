@@ -1,5 +1,7 @@
 # Desk Yantra
 
+> **Product transition (2026-11-21):** The next version will use the Apache-2.0 OpenMausBot core as its base. The app documented below is the previous workbench and remains runnable during the transition. See [the new plan](docs/OPENMAUSBOT-PIVOT.md) for current scope, gates and handoff. Existing `.state/` and provider credentials are not automatically migrated.
+
 A self-hosted personal agent workspace with a React/TypeScript browser interface, Python OpenHands SDK workers, isolated Docker execution, and a separately authenticated Linux companion. See [acceptance status](docs/ACCEPTANCE.md) for actual live verification and remaining gaps. The deployment supports a single trusted local user.
 
 To inspect the proposed product experience before setting up a model, open `http://127.0.0.1:8765/?preview=1` while the app is running. The clickable [product preview](docs/PRODUCT-PREVIEW.md) uses illustrative data only and makes no API calls or changes. It is reachable from the pairing page and the chat sidebar.

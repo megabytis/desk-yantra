@@ -1,5 +1,7 @@
 # Decision record — 2026-11-19
 
+> **Transition note (2026-11-21):** This records the previous Python/OpenHands workbench architecture. The target product architecture is OpenMausBot OSS core plus Desk Yantra-specific Arch/Hyprland, permission and UX work. See [the pivot plan](OPENMAUSBOT-PIVOT.md). Do not assume the old runtime is the target architecture.
+
 Chosen runtime: released `openhands-sdk==1.62.0`. GitHub latest-release API confirmed v1.62.0. Inspected source checkout revision `45cf668c5e2af38c6cc8c2eb6ae4f0d6f828e4c3` under `/tmp/paw-sdk`.
 
 Inspected upstream paths: `examples/01_standalone_sdk/{01_hello_world,02_custom_tools,10_persistence}.py`, `openhands-sdk/openhands/sdk/{tool/tool.py,tool/schema.py,workspace/local.py,conversation/conversation.py}`, `clients/typescript/README.md`. The MIT license was inspected before implementation. No upstream source files were copied. The integration probe uses our own HTTP fixture and custom tool with the released package, and verifies a real observation returns through SDK events. Published Observation content requires `from_text`; an initial probe using a custom field did not expose the expected event content and was corrected.

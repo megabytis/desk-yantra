@@ -559,3 +559,17 @@ Contributor: **OpenAI Codex (GPT-6)**. Read-only inspection of private state fou
 | `/tmp` follow-up | No matching `paw-control-*`, `paw-project-*`, or two preview PNG paths remained. |
 
 Remaining: browser regression must run when port 8765 is free; test records remain in private state until a reviewed cleanup, and a usable first-bot setup path is still missing.
+# OpenMausBot base pivot — 2026-11-21
+
+Contributor: **OpenAI Codex (GPT-6)**, under owner direction. The active plan is now `docs/OPENMAUSBOT-PIVOT.md`. The local reference checkout is OpenMausBot `4e22b4d9b`; its OSS core is Apache-2.0 and `enterprise/` is separately licensed. No upstream source has yet been imported into Desk Yantra, no private state or API key has been migrated, and the old workbench remains the running product until the fork gate passes.
+
+| Baseline check | Actual result |
+| --- | --- |
+| `pnpm install --frozen-lockfile` in existing upstream checkout | PASS, 1006 packages installed in 56.3s. `node_modules` uses about 2.4 GB; no second source checkout created. |
+| `pnpm build` | FAILED at default Node 2 GB heap during Vite transform; TypeScript phases had completed. |
+| `NODE_OPTIONS=--max-old-space-size=4096 pnpm build` | PASS, 6056 modules transformed and bundle built in 44.61s, with CSS/chunk warnings. Generated `dist` uses about 27 MB. |
+| Isolated `control-omb launch`, `doctor`, `new-bot`, `send`, `wait` | PASS: fixture health connected with no reported problems; a bot was created, accepted `hello`, settled and returned `hello from fake claude`. This is a scripted engine, not live provider evidence. |
+| Fixture shutdown | PASS: foreground launcher exited 0; its temporary data directory was removed. |
+| Browser UI, real OpenAI, Arch/Hyprland computer use | NOT YET VERIFIED for this upstream baseline. `doctor` reported its built-in agent-browser unavailable until installed. |
+
+The upstream tracked tree remained clean. Do not count this as a production release or as proof of Muse feature parity.
