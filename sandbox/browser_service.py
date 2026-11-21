@@ -1,7 +1,7 @@
 import json
 import os
 import ipaddress
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, urljoin
 from pathlib import Path
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from playwright.sync_api import sync_playwright
@@ -38,14 +38,35 @@ policy = {"domains": [], "blocked": []}
 def guard_request(route):
     url = route.request.url
     if allowed_request(url, policy["domains"]):
-        route.continue_()
+        try:
+            # Playwright does not reroute Chromium's redirect hop. Refuse the
+            # redirect before the browser can contact an unchecked host.
+            response = route.fetch(max_redirects=0)
+            if 300 <= response.status < 400 and response.headers.get("location"):
+                policy["blocked"].append(urljoin(url, response.headers["location"]))
+                route.abort()
+            else:
+                route.fulfill(response=response)
+        except Exception:
+            route.abort()
     else:
         policy["blocked"].append(url)
         route.abort()
 
 
+def guard_websocket(route):
+    parsed = urlsplit(route.url)
+    web_url = parsed._replace(scheme="https" if parsed.scheme == "wss" else "http").geturl()
+    if parsed.scheme in ("ws", "wss") and allowed_request(web_url, policy["domains"]):
+        route.connect_to_server()
+    else:
+        policy["blocked"].append(route.url)
+        route.close(code=1008, reason="Blocked by workspace network policy")
+
+
 class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
+        global page
         try:
             action = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
             policy["domains"] = action.get("allowed_domains") or []
@@ -70,7 +91,12 @@ class Handler(BaseHTTPRequestHandler):
             result = {"url": page.url, "text": page.inner_text("body")[:100000], "screenshot": "browser.png"}
             self.send_response(200)
         except Exception as error:
-            result = {"error": str(error)}
+            result = {"error": "Browser request or redirect blocked by workspace network policy" if policy["blocked"] else str(error)}
+            try:
+                page.close()
+                page = context.new_page()
+            except Exception:
+                pass
             self.send_response(400)
         self.send_header("Content-Type", "application/json")
         self.end_headers()
@@ -82,5 +108,6 @@ if __name__ == "__main__":
         browser = playwright.chromium.launch(headless=True)
         context = browser.new_context(accept_downloads=False, service_workers="block")
         context.route("**/*", guard_request)
+        context.route_web_socket("**/*", guard_websocket)
         page = context.new_page()
         HTTPServer(("127.0.0.1", int(os.environ.get("PAW_BROWSER_PORT", "9111"))), Handler).serve_forever()

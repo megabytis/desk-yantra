@@ -32,6 +32,10 @@ OpenAI Codex (GPT-6) added a shared local/CI runner at `scripts/check_ui.py`. It
 
 OpenAI Codex (GPT-6) made the launcher refuse occupied loopback ports and wait for both uvicorn services before displaying the pairing address and token. It monitors both child processes, handles SIGINT/SIGTERM, stops active runs through the same transition and approval-cancellation path as the API, and terminates the remaining service. Unconfirmed companion cleanup leaves the run in review and triggers recorded process-group recovery. This is process supervision for a foreground single-user launch; it is not a system service, reboot manager, or guarantee that external effects can be rolled back.
 
+## Browser redirect boundary — 2026-11-21
+
+OpenAI Codex (GPT-6) added a real Chromium probe after a policy review found that Playwright `route.continue_()` let Chromium follow HTTP redirects without invoking the route guard for the new host. The service now fetches a single response without following redirects and refuses 3xx responses with a `Location` header. HTTP resources and WebSockets are checked against the workspace domain rule; a blocked navigation closes the page and creates a fresh one in the same browser context. This intentionally limits browsing until safe redirect handling can be proven. It does not control arbitrary container processes or DNS rebinding.
+
 ## State schema versioning — 2026-11-20
 
 OpenAI Codex (GPT-6-sol) introduced SQLite `PRAGMA user_version` for Desk Yantra state. Version 0 is the pre-versioning layout; startup checks the baseline table layouts, creates missing tables/indexes and records version 1 in one SQLite transaction. An incompatible legacy layout fails without being stamped current. A database from a newer build fails startup rather than being silently downgraded. The backup tool rejects backups whose schema is newer than this build. Future schema changes need ordered migrations and old-state fixtures. Local Goose session migration code was consulted for versioning patterns; no source copied.

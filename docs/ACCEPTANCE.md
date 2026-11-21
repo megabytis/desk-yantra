@@ -314,4 +314,17 @@ Contributor: **OpenAI Codex (GPT-6)**, under owner direction. `workbench/__main_
 | `.venv/bin/python scripts/check_ui.py` | PASS: 5 passed in 1.1m. |
 | GitHub Actions run `44866930561` for prior commit `0208ee1` | PASS: completed with conclusion `success`. |
 
+## Real browser network policy verification and redirect fix — 2026-11-21
+
+Contributor: **OpenAI Codex (GPT-6)**, under owner direction. A real Chromium probe exposed that the previously recorded route guard did **not** inspect redirect hops: a page from `127.0.0.1` redirected to forbidden `localhost` and reached the target. The new browser service fetches one HTTP response without following redirects, refuses responses with `Location`, checks WebSockets against the same domain rule, and resets the page after a blocked action. `tests/browser_network_probe.py` verifies redirect, page resource and WebSocket denial plus a later allowed navigation. CI now runs this probe after installing Chromium. This is a safe restrictive behavior; ordinary website redirects currently fail. It is still a host-side browser-service probe rather than a Docker container network isolation test.
+
+| Command / check | Actual result this session |
+| --- | --- |
+| `.venv/bin/python scripts/check_python.py tests/test_browser_network.py tests/test_browser_policy.py -q` | PASS: 10 passed in 0.46s. |
+| `.venv/bin/python tests/browser_network_probe.py` | PASS: redirect/resource/WebSocket blocked, allowed page loaded. |
+| `.venv/bin/python scripts/check_python.py` | PASS: 110 passed, 3 warnings in 11.71s. |
+| `.venv/bin/python scripts/check_ui.py` | PASS: 5 passed in 1.2m. |
+| `docker build -t paw-sandbox:local sandbox` | PASS: image built with updated browser service. |
+| GitHub Actions run `44867605620` for prior commit `af444b8` | PASS: completed with conclusion `success`. |
+
 
