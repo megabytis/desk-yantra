@@ -5995,7 +5995,10 @@ async function selectableComputers(bot: BotRecord) {
     let canCreate = false;
     let reason = CLOUD_HOME && surface === "cloud"
       ? "The cloud desktop is not set up or running. Open the Screen panel to set it up."
-      : surface === "local" ? `This computer is not available to ${bot.name} yet. Ask the person to ${whereWorksControl(bot.name)}.` : "This computer is not configured or running. Open the Screen panel to set it up.";
+      : surface === "local" ? (process.env.DESK_YANTRA_LOCAL_WORKSPACE
+        ? `The native screen connection is unavailable. For files and commands inside ${process.env.DESK_YANTRA_LOCAL_WORKSPACE}, use desk_local_workspace tools without selecting This computer.`
+        : `This computer is not available to ${bot.name} yet. Ask the person to ${whereWorksControl(bot.name)}.`)
+        : "This computer is not configured or running. Open the Screen panel to set it up.";
     try {
       if (off) reason = "Computer access is Off in this bot's settings.";
       else if (toolsLeaveOut && surface !== "browser") reason = toolsLeaveOut;

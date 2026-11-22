@@ -93,6 +93,24 @@ it("where every bot reaches every folder (a desktop), keeps such servers every b
   expect(existsSync(join(data, "mcp-bot-servers.json")), "a later boxed start still moves them over").toBe(false);
 });
 
+it("mounts and probes an explicitly shared local workspace for browser-server bots", async () => {
+  const root = mkdtempSync(join(tmpdir(), "desk-workspace-"));
+  dirs.push(root);
+  vi.stubEnv("DESK_YANTRA_LOCAL_WORKSPACE", root);
+  try {
+    const { host, started } = setup({ boxed: false });
+    await host.prepare(IRIS);
+    expect(started).toContain("desk_local_workspace:iris");
+    expect(host.mounted(IRIS).desk_local_workspace).toMatchObject({
+      command: process.execPath,
+      env: { DESK_YANTRA_LOCAL_WORKSPACE: root },
+    });
+    expect(host.mounted(ROSA).desk_local_workspace).toBeDefined();
+  } finally {
+    vi.unstubAllEnvs();
+  }
+});
+
 it("moves servers over once: a server added in Settings afterwards stays every bot's across restarts", () => {
   const first = setup();
   first.host.boot();

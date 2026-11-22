@@ -1,6 +1,6 @@
 // Which config.json MCP servers each bot's turns start: every bot's and the bot's own, minus any that does not start.
-import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, statSync } from "node:fs";
+import { isAbsolute, join } from "node:path";
 
 import { writeFileAtomic } from "../atomic.ts";
 import type { AppConfig } from "../config.ts";
@@ -87,7 +87,24 @@ function withRestarts(servers: Record<string, McpServerSpec>, restarts: Readonly
 }
 
 export function createMcpServersHost(deps: McpServersHostDeps) {
-  const configured = (bot: Bot): Record<string, McpServerSpec> => deps.policy(customMcpServers(deps.cfg(), bot.mcpServers, bot.id));
+  const localWorkspace = (): StdioMcpSpec | null => {
+    const root = process.env.DESK_YANTRA_LOCAL_WORKSPACE;
+    if (!root || !isAbsolute(root) || !existsSync(root) || !statSync(root).isDirectory() || deps.boxed()) return null;
+    const bundled = import.meta.url.endsWith(".js");
+    return {
+      command: process.execPath,
+      args: bundled
+        ? [join(import.meta.dirname, "local-workspace-mcp.js")]
+        : ["--experimental-strip-types", join(import.meta.dirname, "..", "local-workspace-mcp.ts")],
+      env: { DESK_YANTRA_LOCAL_WORKSPACE: root, ELECTRON_RUN_AS_NODE: "1" },
+    };
+  };
+  const configured = (bot: Bot): Record<string, McpServerSpec> => {
+    const servers = customMcpServers(deps.cfg(), bot.mcpServers, bot.id);
+    const shared = localWorkspace();
+    if (shared) servers.desk_local_workspace = shared;
+    return deps.policy(servers);
+  };
   /** The bot's servers with their Vault keys read, and those whose key it can't have now, with why. */
   const keyed = (bot: Bot): { servers: Record<string, McpServerSpec>; off: McpServerOff[] } => {
     const servers: Record<string, McpServerSpec> = {}, off: McpServerOff[] = [];
@@ -114,7 +131,12 @@ export function createMcpServersHost(deps: McpServersHostDeps) {
   const checks = createMcpHealth({
     file: join(deps.dataDir, "mcp-health.json"),
     // A server whose Vault key is off is not started: it is off for that reason, not because it failed.
-    servers: () => Object.fromEntries(Object.entries(enabledCommandServers(deps.cfg())).filter(([name, server]) => !deps.keys || deps.keys.resolve(name, server).ok)),
+    servers: () => {
+      const configured = enabledCommandServers(deps.cfg());
+      const shared = localWorkspace();
+      if (shared) configured.desk_local_workspace = shared;
+      return Object.fromEntries(Object.entries(configured).filter(([name, server]) => !deps.keys || deps.keys.resolve(name, server).ok));
+    },
     users: (name) => deps.bots().filter((bot) => started(bot).includes(name)),
     start,
     tell: deps.tell,

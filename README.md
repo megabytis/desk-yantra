@@ -1,5 +1,15 @@
 # Desk Yantra
 
+## Current browser app: local files and commands on Arch
+
+The browser app can use local files and a bounded terminal without a Hyprland screen-control plugin. Start it with an explicit shared directory:
+
+```sh
+./scripts/launch_desk_yantra.sh --local-workspace "$HOME"
+```
+
+For a smaller grant, pass the project directory instead of `$HOME`. This makes the `desk_local_workspace` tools available to bots, including teammates. File tools cannot address paths outside the shared directory. Commands require the `bubblewrap` package and run with the shared directory as their only persistent writable host path, no network or desktop access, a 60-second timeout, and capped output. Set each bot's approval mode to **Ask** if you want to approve each action; **Full access** permits its tool calls without a card. This does not enable the Screen panel's **This computer** option, which still requires the desktop app and a working native driver. The launcher does not run the game or any other command by itself.
+
 > **Product transition (2026-11-21):** The next version will use the Apache-2.0 OpenMausBot core as its base. The app documented below is the previous workbench and remains runnable during the transition. See [the new plan](docs/OPENMAUSBOT-PIVOT.md) for current scope, gates and handoff. Existing `.state/` and provider credentials are not automatically migrated.
 
 The unreleased source import is in [`next/`](next/README.md). It builds and runs an isolated fake-engine bot conversation, but still needs visible rebranding, a real-provider journey and Arch/Hyprland qualification before replacing this app.

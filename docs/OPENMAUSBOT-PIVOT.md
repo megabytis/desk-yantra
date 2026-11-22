@@ -24,6 +24,10 @@ A useful personal bot app on the owner's Arch Linux/Hyprland desktop: browser ch
 
 Work in coherent batches. A build or scripted fixture does not prove a real bot task. Do not run verification against the owner's live service. Use OpenMausBot's `AGENTS.md` and `docs/verification/README.md` for imported code. Keep test state isolated and remove its temporary workspaces.
 
+### 2026-11-22 local workspace path — OpenAI Codex (GPT-6)
+
+The standalone browser server now has an explicit `--local-workspace` opt-in. It mounts scoped file tools and a Bubblewrap terminal as `desk_local_workspace` for bots; delegated bots can use these tools without selecting the host screen. The native **This computer** screen option remains separate and unavailable on the owner's Hyprland session until its desktop driver and compositor plugin are installed and live-qualified. The workspace bridge needs an isolated bot conversation with a real model and an approval-card check before claiming Gate 4 is complete. Browser search failures are a separate follow-up.
+
 ## Handoff for Antigravity and other agents
 
 1. Read this file first, then `PLANNING.md`, `docs/ACCEPTANCE.md`, upstream `AGENTS.md`, `LICENSING.md`, `NOTICE` and `docs/verification/README.md`.
