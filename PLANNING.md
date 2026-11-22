@@ -273,3 +273,5 @@ Append entries in this format: `Date | Contributor and tool/model | Scope and fi
 **2026-11-22 Direct link correction — OpenAI Codex (GPT-6):** Computer-access downloads and several in-app help links now point to Desk Yantra's repository and docs index. Focused tests: 20 passed; TypeScript check passed. Feature-specific guides still need to replace the generic docs links.
 
 **2026-11-22 Imported campaigns correction — OpenAI Codex (GPT-6):** The app notice queue and built-in announcement history no longer show imported Cloud, Team, Boat, or ModelGo campaigns; the Grok migration notice stays available. Focused tests: 135 passed. Old campaign components and URL constants remain to be removed, alongside deploy scripts, relay audit and packaged network capture.
+
+**2026-11-22 Widget example branding — OpenAI Codex (GPT-6):** Replaced an upstream image fetch, docs link, and source caption in built-in widget examples with Desk Yantra destinations. Focused widget tests: 87 passed; TypeScript passed. Installer scripts still default to upstream release images and need a separate release decision before use.
