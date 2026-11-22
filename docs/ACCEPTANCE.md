@@ -768,3 +768,5 @@ The local real-Chromium browser checklist was run with the existing Playwright C
 ## Upstream outbound diagnostics shutdown — 2026-11-22
 
 Contributor: **OpenAI Codex (GPT-6)**. Removed the Electron main-process PostHog launch sender, the headless doctor's automatic upstream Cloud clock probe, and the default upstream bug-report and status endpoints. Bug reports now require an explicit operator endpoint; otherwise they return a local not-configured result without calling `fetch`. Tests: Electron launch analytics **1 passed**; bug-report and host-doctor **33 passed, 1 skipped**; server TypeScript check **passed**. Upstream Cloud/account/relay flows still need a separate audit and are not claimed independent.
+
+The packaged phone companion's upstream accounts default was also removed; only an explicit safe control-plane URL can enable it. `pnpm exec vitest run electron/companion-account-service.test.mjs`: **81 passed**. The Electron Cloud account client still has upstream defaults and remains a release blocker.

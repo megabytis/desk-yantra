@@ -50,7 +50,7 @@ export { friendlyCompanionAccountError };
 
 export { managedEndpointNeed, PHONE_UNUSED_RELEASE_MS } from "./companion-endpoint-need.mjs";
 
-export const DEFAULT_COMPANION_CONTROL_PLANE_URL = "https://accounts.openmausbot.com";
+export const DEFAULT_COMPANION_CONTROL_PLANE_URL = "";
 
 const DEFAULT_HEALTH_CACHE_MS = 30_000;
 const DEFAULT_AUTO_RETRY_BASE_MS = 10 * 60_000;
@@ -95,13 +95,12 @@ const defaultSetTimer = (callback, milliseconds) => {
 
 /** Development must name an exact origin so an OTP or bearer never reaches an accidental host; an invalid override disables the feature. */
 export function resolveCompanionControlPlaneURL({
-  isPackaged,
   environment = process.env,
 } = {}) {
   if (Object.hasOwn(environment, "OMB_CONTROL_PLANE_URL")) {
     return normalizeControlPlaneURL(environment.OMB_CONTROL_PLANE_URL);
   }
-  return isPackaged ? DEFAULT_COMPANION_CONTROL_PLANE_URL : "";
+  return "";
 }
 
 /** Nothing this service returns may contain an account bearer, installation credential, connector token or Cloudflare resource id. */
