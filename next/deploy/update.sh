@@ -795,6 +795,9 @@ while [ $# -gt 0 ]; do
   esac
   shift
 done
+if [ "$MODE" != rollback ] && [ "${DESK_YANTRA_ALLOW_IMPORTED_DEPLOY:-}" != 1 ]; then
+  refuse "Desk Yantra has no verified server image for this legacy updater. It would download OpenMausBot releases. Rollback remains available; set DESK_YANTRA_ALLOW_IMPORTED_DEPLOY=1 only if you intentionally want the imported deployment."
+fi
 if [ -n "$WANT_VERSION" ] && ! is_version "$WANT_VERSION"; then refuse "--version takes a released version such as 0.1.151."; fi
 
 # update-runner.sh asks what a plain run would take before it runs one: "image version", nothing changed.

@@ -535,6 +535,9 @@ run_uninstall() {
 main() {
   settings
   parse "$@"
+  if [ "$MODE" = install ] && [ "${DESK_YANTRA_ALLOW_IMPORTED_DEPLOY:-}" != 1 ]; then
+    fail "Desk Yantra has no verified server image for this legacy installer. It would download OpenMausBot releases. Use scripts/launch_desk_yantra.sh, or set DESK_YANTRA_ALLOW_IMPORTED_DEPLOY=1 only if you intentionally want the imported deployment."
+  fi
   choose_dir
   case "$MODE" in
     install) run_install ;;

@@ -94,7 +94,7 @@ function install(target: Record<string, unknown> = {}, extra: Record<string, unk
       env: {
         PATH: `${join(root, "bin")}:/usr/bin:/bin:/usr/sbin:/sbin`, HOME: root, FAKE_DOCKER_DIR: fake, XDG_RUNTIME_DIR: root,
         OMB_STABLE_URL: `file://${join(root, "stable.json")}`, OMB_NEWEST_URL: `file://${join(root, "newest.json")}`,
-        OMB_UPDATE_POLL_S: "0", OMB_UPDATE_WAIT_S: "120", OMB_UPDATE_ENGINE_WAIT_S: "1", ...env,
+        OMB_UPDATE_POLL_S: "0", OMB_UPDATE_WAIT_S: "120", OMB_UPDATE_ENGINE_WAIT_S: "1", DESK_YANTRA_ALLOW_IMPORTED_DEPLOY: "1", ...env,
       },
     });
     return { ...result, said: result.stdout.trim().split("\n") };

@@ -152,7 +152,7 @@ function run(args: string[], server: Server = {}, kept?: { dir: string }) {
   const command = server.umask ? ["-c", `umask ${server.umask}; exec /bin/sh "$0" "$@"`, SCRIPT, ...args] : [SCRIPT, ...args];
   const result = spawnSync("/bin/sh", command, {
     encoding: "utf8",
-    env: { PATH: bin, FAKE_LOG: log, OMB_INSTALL_SYSROOT: sysroot, OMB_INSTALL_DIR: install, MAUSBOT_ADMIN_URL: "https://admin.example.test", ...HEALTHY, ...server.env },
+    env: { PATH: bin, FAKE_LOG: log, OMB_INSTALL_SYSROOT: sysroot, OMB_INSTALL_DIR: install, MAUSBOT_ADMIN_URL: "https://admin.example.test", DESK_YANTRA_ALLOW_IMPORTED_DEPLOY: "1", ...HEALTHY, ...server.env },
     timeout: 60_000,
   });
   const calls = existsSync(log) ? readFileSync(log, "utf8").trim().split("\n").filter(Boolean) : [];
@@ -163,6 +163,13 @@ function run(args: string[], server: Server = {}, kept?: { dir: string }) {
 const READS = /^docker (version --format|info --format|compose version$|ps -q --filter)/;
 
 describe.skipIf(!posix)("deploy/install.sh", () => {
+  it("refuses imported releases by default before running a tool", () => {
+    const blocked = run(["--domain", "maus.example.com"], { env: { DESK_YANTRA_ALLOW_IMPORTED_DEPLOY: "" } });
+    expect(blocked.status).toBe(1);
+    expect(blocked.stderr).toContain("no verified server image");
+    expect(blocked.calls).toEqual([]);
+  });
+
   it("is plain POSIX sh, as `curl … | sh` runs it", () => {
     expect(spawnSync("sh", ["-n", SCRIPT]).status).toBe(0);
     const dash = spawnSync("dash", ["-n", SCRIPT]);

@@ -83,7 +83,7 @@ function machine(options: { home?: string } = {}) {
   const run = (args: string[] = [], env: Record<string, string> = {}) => {
     const result = spawnSync(SHELL, [SCRIPT, ...args], {
       encoding: "utf8", timeout: 30_000,
-      env: { PATH: bin, HOME: home, XDG_RUNTIME_DIR: root, FAKE: fake, OMB_INSTALL_QUADLET: join(bin, "quadlet"), OMB_INSTALL_HEALTH_WAIT_S: "6", ...env },
+      env: { PATH: bin, HOME: home, XDG_RUNTIME_DIR: root, FAKE: fake, OMB_INSTALL_QUADLET: join(bin, "quadlet"), OMB_INSTALL_HEALTH_WAIT_S: "6", DESK_YANTRA_ALLOW_IMPORTED_DEPLOY: "1", ...env },
     });
     return { ...result, out: result.stdout + result.stderr };
   };
@@ -99,6 +99,14 @@ function machine(options: { home?: string } = {}) {
 }
 
 describe.skipIf(!posix)("deploy/podman/install.sh", () => {
+  it("refuses imported releases by default before pulling an image", () => {
+    const box = machine();
+    const blocked = box.run([], { DESK_YANTRA_ALLOW_IMPORTED_DEPLOY: "" });
+    expect(blocked.status).toBe(1);
+    expect(blocked.stderr).toContain("no verified server image");
+    expect(box.pulled()).toEqual([]);
+  });
+
   it("parses in a POSIX shell and in dash", () => {
     expect(spawnSync("sh", ["-n", SCRIPT]).status).toBe(0);
     if (existsSync("/bin/dash")) expect(spawnSync("/bin/dash", ["-n", SCRIPT]).status).toBe(0);
