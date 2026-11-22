@@ -165,6 +165,11 @@ export function verificationServerEnvironment(parentEnv: NodeJS.ProcessEnv, data
     // The project's live announcement cards would sit over the corner the UI tests click in.
     OMB_DISABLE_ANNOUNCEMENTS: "1",
   });
+  if (parentEnv.OMB_TEST_LOCAL_WORKSPACE === "1") {
+    const localRoot = join(dataDir, "shared-local-workspace");
+    mkdirSync(localRoot, { recursive: true });
+    childEnv.DESK_YANTRA_LOCAL_WORKSPACE = localRoot;
+  }
   // The fake engines' knobs are the one thing a caller may script into the child.
   for (const [key, value] of Object.entries(parentEnv)) {
     // FAKE_CLAUDE_DUMP stays the launcher's: assertions read fixtureDumpPath.

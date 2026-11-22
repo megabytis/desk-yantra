@@ -26,7 +26,7 @@ Work in coherent batches. A build or scripted fixture does not prove a real bot 
 
 ### 2026-11-22 local workspace path — OpenAI Codex (GPT-6)
 
-The standalone browser server now has an explicit `--local-workspace` opt-in. It mounts scoped file tools and a Bubblewrap terminal as `desk_local_workspace` for bots; delegated bots can use these tools without selecting the host screen. The native **This computer** screen option remains separate and unavailable on the owner's Hyprland session until its desktop driver and compositor plugin are installed and live-qualified. The workspace bridge needs an isolated bot conversation with a real model and an approval-card check before claiming Gate 4 is complete. Browser search failures are a separate follow-up.
+The standalone browser server now has an explicit `--local-workspace` opt-in. It mounts scoped file tools and a Bubblewrap terminal as `desk_local_workspace` for bots; delegated bots can use these tools without selecting the host screen. The native **This computer** screen option remains separate and unavailable on the owner's Hyprland session until its desktop driver and compositor plugin are installed and live-qualified. An isolated full-server OpenAI-compatible fake-provider conversation verified tool availability, approval before a write, and the file after approval. A real provider and the owner's session remain unverified, so Gate 4 is still open. Browser search failures are a separate follow-up.
 
 ## Handoff for Antigravity and other agents
 
