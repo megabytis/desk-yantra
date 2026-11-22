@@ -3,17 +3,16 @@
   "private": true,
   "version": "0.1.173",
   "description": "A self-hosted personal agent workspace.",
-  "homepage": "https://github.com/milind-soni/OpenMausBot",
+  "homepage": "https://github.com/megabytis/desk-yantra",
   "repository": {
     "type": "git",
-    "url": "https://github.com/milind-soni/OpenMausBot.git"
+    "url": "https://github.com/megabytis/desk-yantra.git"
   },
   "author": {
-    "name": "Milind Soni",
-    "email": "46266943+milind-soni@users.noreply.github.com"
+    "name": "Desk Yantra contributors"
   },
   "license": "Apache-2.0",
-  "desktopName": "com.openmausbot.app.desktop",
+  "desktopName": "com.deskyantra.app.desktop",
   "type": "module",
   "main": "electron/main.mjs",
   "engines": {

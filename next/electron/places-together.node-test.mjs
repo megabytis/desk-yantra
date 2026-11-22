@@ -635,7 +635,7 @@ function loadPreload() {
   } };
   const preload = require.resolve("./preload.cjs");
   delete require.cache[preload];
-  process.argv.push("--omb-company-desktop=1");
+  process.argv.push("--omb-company-desktop=1", "--desk-cloud-available=1");
   try { require(preload); } finally { process.argv.pop(); if (held) require.cache[electron] = held; else delete require.cache[electron]; delete require.cache[preload]; }
   return { api, channels, invoked };
 }

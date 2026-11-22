@@ -7,7 +7,7 @@ const PRELOAD = readFileSync(new URL("./preload.cjs", import.meta.url), "utf8");
 const MAIN = readFileSync(new URL("./main.mjs", import.meta.url), "utf8").replace(/\r\n/g, "\n");
 const LOCAL = "http://127.0.0.1:8799";
 
-function app(origin, argv = [`--omb-local-origin=${LOCAL}`, "--omb-company-desktop=1", "--omb-app-version=0.1.127"]) {
+function app(origin, argv = [`--omb-local-origin=${LOCAL}`, "--omb-company-desktop=1", "--desk-cloud-available=1", "--omb-app-version=0.1.127"]) {
   let bridge;
   vm.runInNewContext(PRELOAD, {
     process: { platform: "darwin", argv },

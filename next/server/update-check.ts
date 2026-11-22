@@ -2,9 +2,9 @@
 import { existsSync } from "node:fs";
 import { join, sep } from "node:path";
 
-export const LATEST_RELEASE_URL = "https://api.github.com/repos/milind-soni/OpenMausBot/releases/latest";
+export const LATEST_RELEASE_URL = "https://api.github.com/repos/megabytis/desk-yantra/releases/latest";
 /** Written by .github/workflows/promote-stable.yml: the released version our own Clouds have run for 48 hours. */
-export const STABLE_CHANNEL_URL = "https://raw.githubusercontent.com/milind-soni/OpenMausBot/channels/stable.json";
+export const STABLE_CHANNEL_URL = "https://raw.githubusercontent.com/megabytis/desk-yantra/channels/stable.json";
 const CACHE_MS = 60 * 60_000;
 /** How long the last answer stands in when the channel cannot be read: an outage of GitHub is no reason to say nothing. */
 const STALE_MS = 24 * 60 * 60_000;
@@ -40,7 +40,7 @@ export function updateCommand(install: InstallKind, target?: { version: string; 
     case "docker": return { command: `git pull && ./update.sh${version}`, restart: false };
     case "podman-service": return { command: `${podmanServiceDir(env)}/update.sh${version}`, restart: false };
     case "podman": return { command: "git pull && cd deploy/podman && PODMAN_COMPOSE_PROVIDER=podman-compose podman compose --env-file .env -f compose.yaml up -d --build", restart: false };
-    case "npm": return { command: `npm install -g openmausbot@${target?.version ?? "latest"}`, restart: true };
+    case "npm": return undefined;
     case "git": return { command: "git pull && pnpm install", restart: true };
     default: return undefined;
   }
@@ -127,7 +127,7 @@ export function createUpdateChecker(options: {
     ...updateCommand(options.install),
   });
   const ask = (url: string) => fetchJson(url, {
-    headers: { accept: "application/vnd.github+json", "user-agent": "openmausbot-update-check" },
+    headers: { accept: "application/vnd.github+json", "user-agent": "desk-yantra-update-check" },
     signal: AbortSignal.timeout(8_000),
   });
 

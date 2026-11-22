@@ -16,6 +16,7 @@ The imported application still contains OpenMausBot names and service integratio
 - Electron sessions now cancel requests to known imported service domains, including saved workspace origins. Node fetches, subprocesses and links opened in the external browser need separate treatment and network capture.
 - The old Product Hunt launch card and built-in announcement pointing at the imported product were removed. Other imported Cloud and sponsor promotions remain under audit.
 - Announcement and model feeds now use bundled copies by default and point to Desk Yantra repository files when an operator explicitly enables remote refresh. Their request user-agent identifies Desk Yantra.
+- Server update checks now target Desk Yantra releases, and update status no longer suggests the imported npm package. Packaged windows hide imported Cloud account and billing bridges while no Desk Yantra Cloud service is available. Package metadata identifies Desk Yantra.
 - The main app/help/feedback links now target the Desk Yantra repository rather than upstream promotion.
 - The server team library catalog and fetch helpers no longer point by default to the upstream community team repository. When DESK_YANTRA_TEAM_LIBRARY_REPOSITORY is unset, the catalog returns empty and no outbound network request is made. The team library UI panel now renders the repository button only when an explicit repository URL is configured.
 - Rebranded template share export summaries in the server to Desk Yantra and updated expectations in server tests.
