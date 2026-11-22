@@ -758,3 +758,7 @@ Verification: `pnpm exec vitest run server/local-workspace-mcp.test.ts server/ho
 ### Isolated approval roundtrip — 2026-11-22
 
 Contributor: **OpenAI Codex (GPT-6)**. Added a full-server test with an OpenAI-compatible fake provider and a local workspace created inside the fixture's temporary data directory. The bot was offered `desk_local_workspace`, requested `write_file`, stopped at an approval card while the target file was absent, then wrote the exact file after approval and completed the turn. `pnpm exec vitest run server/local-workspace.e2e.test.ts`: **1 passed**, exit code 0. This verifies the application path without touching the owner's private service or API key. A real OpenAI reply in the owner's session remains unverified.
+
+### Browser element recovery — 2026-11-22
+
+Contributor: **OpenAI Codex (GPT-6)**. The owner's recorded browser-tool failures included `Element not found` for changing page refs. The browser runtime now appends a fresh-snapshot and one-retry instruction to that tool error, including relayed browser actions. `pnpm exec vitest run server/browser-runtime.test.ts`: **101 passed**, exit code 0 outside the sandbox because the suite starts a fake browser process. This is a recovery hint, not proof that every reported browser-search task succeeds; a specific failed search must be reproduced separately.

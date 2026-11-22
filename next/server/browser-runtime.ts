@@ -581,6 +581,14 @@ export class BrowserRuntime {
         if (method === "tools/list") {
           return withOmbTools(slimBrowserToolList(result));
         }
+        if (result && typeof result === "object" && (result as { isError?: boolean }).isError === true &&
+            /(?:Element not found:|\bref\b.*\bstale\b)/i.test(firstText(result))) {
+          const failed = result as { content?: unknown[] };
+          result = { ...failed, isError: true, content: [
+            ...(Array.isArray(failed.content) ? failed.content : []),
+            { type: "text", text: "The page changed or that element is gone. Take a fresh agent_browser_snapshot and use its current ref; retry the action once only if the intended element is still present." },
+          ] };
+        }
         if (before && result && typeof result === "object" && (result as { isError?: boolean }).isError !== true &&
             this.gate(session).owner === null) {
           const after = await observePage();

@@ -410,7 +410,10 @@ describe("server-owned browser MCP runtime", () => {
     const refused = await runtime().agentRpc("refused-action", spec(), "tools/call", {
       name: "agent_browser_click", arguments: { selector: "#missing" },
     }) as { isError?: boolean; content: Array<{ text: string }> };
-    expect(refused).toEqual({ isError: true, content: [{ type: "text", text: "Element not found: #missing" }] });
+    expect(refused).toEqual({ isError: true, content: [
+      { type: "text", text: "Element not found: #missing" },
+      { type: "text", text: expect.stringContaining("Take a fresh agent_browser_snapshot") },
+    ] });
   });
   it("inherits only host plumbing and explicit engine settings", () => {
     vi.stubEnv("OPENAI_API_KEY", "must-not-inherit");
@@ -592,7 +595,10 @@ describe("server-owned browser MCP runtime", () => {
   it("answers a refused relay command as a tool error, and a silent one as a lost call", async () => {
     const refused = runtime({ relayCommand: async () => ({ success: false, data: null, error: "Element not found: #cv" }) });
     await expect(refused.agentRpc("s", spec(), "tools/call", { name: BROWSER_UPLOAD_TOOL, arguments: { selector: "#cv", files: ["/f"] } }))
-      .resolves.toMatchObject({ isError: true, content: [{ text: "Element not found: #cv" }] });
+      .resolves.toMatchObject({ isError: true, content: [
+        { text: "Element not found: #cv" },
+        { text: expect.stringContaining("Take a fresh agent_browser_snapshot") },
+      ] });
     const silent = runtime({ relayCommand: async () => { throw new TransportError("The browser did not answer in time."); } });
     await expect(silent.agentRpc("t", spec(), "tools/call", { name: BROWSER_HOVER_TOOL, arguments: { selector: "#menu" } }))
       .resolves.toMatchObject({ isError: true, content: [{ text: expect.stringMatching(/did not answer this agent_browser_hover call/) }] });
