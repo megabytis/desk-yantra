@@ -37,6 +37,19 @@ it("bundles the repository's file, and never fetches while switched off", async 
   expect(store.disabled).toBe(true);
 });
 
+it("uses the bundled feed without an automatic remote request", async () => {
+  const fetchMock = vi.fn(async () => { throw new Error("unexpected fetch"); });
+  vi.stubGlobal("fetch", fetchMock);
+  try {
+    const { store } = subject({ env: {} });
+    expect(await store.cardsForPage()).toEqual([]);
+    await store.refresh({ force: true });
+    expect(fetchMock).not.toHaveBeenCalled();
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});
+
 it("tests never reach the network: the suite switches it off for every server it starts", () => {
   expect(process.env[ANNOUNCEMENTS_DISABLE_ENV]).toBe("1");
 });

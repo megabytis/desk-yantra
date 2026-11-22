@@ -65,6 +65,18 @@ function writeCache(dir: string, data: unknown, fetchedAtMs = NOW - 1000): void 
 }
 
 describe("reading the current list", () => {
+  it("uses the bundled list without an automatic remote request", async () => {
+    const fetchMock = vi.fn(async () => { throw new Error("unexpected fetch"); });
+    vi.stubGlobal("fetch", fetchMock);
+    try {
+      const { manifest: subject } = store();
+      await subject.refresh({ force: true });
+      expect(subject.current()).toEqual(bundled);
+      expect(fetchMock).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
   it("starts from the bundled copy and never touches the network", () => {
     const fetchMock = vi.fn();
     const { manifest: subject } = store({ fetch: fetchMock });

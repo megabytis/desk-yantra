@@ -1,5 +1,5 @@
 // The announcements feed, as the model manifest (server/model-manifest/manifest.ts) keeps its list: a copy bundled with
-// this release, a disk cache of the last good download, and a download from main on raw.githubusercontent.com. The
+// this release, a disk cache of the last good download, and an opt-in download from main on raw.githubusercontent.com. The
 // fetch, cache and failure handling follow that file line for line; the two should become one helper once both are on
 // main. Unlike the manifest it never runs on a timer of its own: a page asks for the cards at launch and about hourly
 // (src/lib/announcements.ts), and that ask refreshes the copy here when it is an hour old, so a server nobody opens never
@@ -14,6 +14,7 @@ import { DATA_DIR } from "../config.ts";
 
 /** "1" stops the download and every remote card on this server's pages, the bundled ones included. */
 export const ANNOUNCEMENTS_DISABLE_ENV = "OMB_DISABLE_ANNOUNCEMENTS";
+export const ANNOUNCEMENTS_FETCH_ENV = "DESK_YANTRA_ANNOUNCEMENTS_FETCH";
 export const ANNOUNCEMENTS_TTL_MS = 60 * 60 * 1000;
 /** Back off failed fetches, so an offline computer does not try on every page load. */
 export const ANNOUNCEMENTS_RETRY_MS = 5 * 60 * 1000;
@@ -71,6 +72,10 @@ export class AnnouncementStore {
     return (this.options.env ?? process.env)[ANNOUNCEMENTS_DISABLE_ENV] === "1";
   }
 
+  get fetchDisabled(): boolean {
+    return this.disabled || (!this.options.fetch && (this.options.env ?? process.env)[ANNOUNCEMENTS_FETCH_ENV] !== "1");
+  }
+
   /** The newest usable copy. Reads the disk cache once and never waits on the network. */
   current(): AnnouncementFeed {
     if (!this.diskChecked) this.loadDiskCache();
@@ -85,7 +90,7 @@ export class AnnouncementStore {
   /** Skipped inside `ttlMs` of the last good fetch and for a while after a failed one, unless `force`. Concurrent calls
    * share one request. Never throws. */
   refresh(options: { force?: boolean; ttlMs?: number } = {}): Promise<AnnouncementFeed> {
-    if (this.disabled) return Promise.resolve(this.current());
+    if (this.fetchDisabled) return Promise.resolve(this.current());
     this.inflight ??= this.fetchAndStore(Boolean(options.force), options.ttlMs ?? ANNOUNCEMENTS_TTL_MS).finally(() => {
       this.inflight = undefined;
     });
@@ -167,7 +172,7 @@ export class AnnouncementStore {
     const timer = setTimeout(() => controller.abort(), this.options.timeoutMs ?? ANNOUNCEMENTS_FETCH_TIMEOUT_MS);
     try {
       const response = await (this.options.fetch ?? fetch)(ANNOUNCEMENTS_URL, {
-        headers: { accept: "application/json", "user-agent": "OpenMausBot" },
+        headers: { accept: "application/json", "user-agent": "Desk Yantra" },
         // Nothing of the person's goes with it.
         credentials: "omit",
         referrerPolicy: "no-referrer",
