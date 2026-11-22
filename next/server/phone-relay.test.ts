@@ -154,6 +154,17 @@ describe("phones through MausBot Relay on a server", () => {
     expect(() => statSync(join(dir, PHONE_RELAY_KEY_FILE))).toThrow();
   });
 
+  it("does not create relay state or contact a service without an explicit control plane", () => {
+    const dir = mkdtempSync(join(tmpdir(), "desk-phone-relay-unconfigured-"));
+    cleanup.push(() => removeTempDir(dir));
+    const sessions = new SessionRegistry({ file: join(dir, "sessions.json") });
+    cleanup.push(() => sessions.close());
+    const logs: string[] = [];
+    expect(startPhoneRelay({ env: { OMB_PHONE_RELAY: "1" }, dataDir: dir, sessions, handle: () => {}, serverName: () => "VPS", publicOrigin: () => null, version: "0.1.152", refusal: null, log: (line) => logs.push(line) })).toBeNull();
+    expect(logs).toEqual(["phone relay: off: no control plane is configured for Desk Yantra"]);
+    expect(() => statSync(join(dir, PHONE_RELAY_KEY_FILE))).toThrow();
+  });
+
   it("pairs a phone by its QR through the relay, and the phone then signs in as its own session, never as this machine", async () => {
     const server = await startServer();
     await connected(server);
@@ -261,7 +272,7 @@ describe("phones through MausBot Relay on a server", () => {
     const logs: string[] = [];
     const sessions = new SessionRegistry({ file: join(dir, "sessions.json") });
     cleanup.push(() => sessions.close());
-    expect(startPhoneRelay({ env: { OMB_PHONE_RELAY: "1" }, dataDir: dir, sessions, handle: () => {}, serverName: () => "VPS", publicOrigin: () => null, version: "0.1.152", refusal: null, log: (line) => logs.push(line) })).toBeNull();
+    expect(startPhoneRelay({ env: { OMB_PHONE_RELAY: "1" }, dataDir: dir, sessions, handle: () => {}, serverName: () => "VPS", publicOrigin: () => null, version: "0.1.152", refusal: null, fetchGrant: async () => ({}), log: (line) => logs.push(line) })).toBeNull();
     expect(logs[0]).toMatch(/^phone relay: off: .*is not a connection key/);
     expect(readFileSync(join(dir, PHONE_RELAY_KEY_FILE), "utf8")).toBe("{\"v\":1}\n");
   });
@@ -319,7 +330,7 @@ describe("phones through MausBot Relay on a server", () => {
       const relay = startPhoneRelay({ env, dataDir: dir, sessions, handle: () => {}, serverName: () => "VPS", publicOrigin: () => null, version: "0.1.152", refusal: null, fetchGrant: async () => (asked += 1, {}), log: (line) => logs.push(line) })!;
       expect(relay.status()).toMatchObject({ relay: "off", grant: "tunnel", reason: expect.any(String) });
       expect(relay.invite(sessions.openPairing().credential, "VPS", null)).toBeNull();
-      expect(logs[0]).toMatch(/^phone relay: off: .*login --relay/);
+      expect(logs[0]).toMatch(/^phone relay: off: .*signed in for relay access/);
       await new Promise((resolve) => setTimeout(resolve, 50));
       expect(asked).toBe(0);
       expect(() => statSync(join(dir, PHONE_RELAY_KEY_FILE))).toThrow();

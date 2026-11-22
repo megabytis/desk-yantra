@@ -822,3 +822,7 @@ Contributor: **OpenAI Codex (GPT-6)**. The imported Docker and Podman installers
 ### Imported community publishing disabled — 2026-11-22
 
 Contributor: **OpenAI Codex (GPT-6)**. A new default gate makes the imported community publisher return unavailable before its fetch, even if a legacy account credential is present. The template card no longer links to the upstream GitHub upload page when publishing is unavailable; Save folder remains. Focused `server/share.test.ts`, `server/share-skill-files.test.ts`, `server/share-team-templates.test.ts`, and `src/components/TemplateCard.test.ts`: **51 passed, 0 failed**. `pnpm exec tsc -b --pretty false`: **passed**. The legacy publisher can still be explicitly enabled in isolated tests, and its old constants remain in source.
+
+### Phone relay default gate — 2026-11-22
+
+Contributor: **OpenAI Codex (GPT-6)**. When `OMB_PHONE_RELAY=1` has no explicit control-plane URL, relay startup now returns off before creating a key or connection. Runtime refusal messages no longer refer to OpenMausBot. `pnpm exec vitest run server/phone-relay.test.ts --reporter=dot`: **15 passed, 0 failed** outside the sandbox; the sandbox denied the loopback fixture with `listen EPERM`. `pnpm exec tsc -b --pretty false`: **passed**. This verifies the default gate and simulated relay paths, not a packaged desktop network capture or a production relay service.
