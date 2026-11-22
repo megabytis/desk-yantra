@@ -12,6 +12,7 @@ The imported application still contains OpenMausBot names and service integratio
 - The Electron main-process launch analytics hooks are now inert and cannot send to PostHog, even if an old local preference says analytics is on. The headless doctor no longer contacts the upstream Cloud to check clock offset. Bug reports and their status checks send no network request unless the operator explicitly configures a report endpoint.
 - The packaged desktop's phone companion no longer defaults to the upstream accounts control plane. A phone control-plane URL must be explicitly configured.
 - The packaged desktop no longer registers with the imported Composio broker by default. Organization onboarding and settings no longer offer an upstream admin portal button; the user must enter a portal URL.
+- The packaged desktop no longer restores the imported Cloud account at startup or offers its purchase flow. Direct account-client creation is refused while no Desk Yantra Cloud service exists. Saved remote workspaces, renderer links, relay modules and packaged network capture still need audit.
 - The main app/help/feedback links now target the Desk Yantra repository rather than upstream promotion.
 
 ## Release blockers

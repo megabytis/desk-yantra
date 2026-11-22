@@ -778,3 +778,7 @@ Contributor: **OpenAI Codex (GPT-6)**. The owner reported that Desk Yantra creat
 ### Connected-apps and organization defaults — 2026-11-22
 
 Contributor: **OpenAI Codex (GPT-6)**. Removed the packaged desktop's automatic third-party Composio broker URL. Broker registration now requires an explicitly configured URL. Removed the one-click upstream organization portal destination from settings and onboarding; organization enrollment requires the user to enter its portal URL. `pnpm exec vitest run electron/managed-composio.test.mjs`: **11 passed**. `pnpm exec tsc -b --pretty false`: **passed**. The Cloud account client and other upstream service paths remain unqualified.
+
+### Imported Cloud account disabled — 2026-11-22
+
+Contributor: **OpenAI Codex (GPT-6)**. The packaged desktop no longer starts its saved imported Cloud account on launch, offers Cloud purchase, exposes account switching, or constructs the imported account client for direct sign-in. This keeps local work usable while Desk Yantra has no owned Cloud service. `node --test electron/cloud-service-policy.node-test.mjs electron/app-permissions.node-test.mjs electron/cloud-entry.node-test.mjs electron/cloud-staging.node-test.mjs`: **4 files passed, 0 failed**. `pnpm exec tsc -b --pretty false`: **passed**. This source and unit verification does not prove that every other renderer, relay, saved remote workspace, or child process is free of upstream traffic; packaged network capture remains required.
