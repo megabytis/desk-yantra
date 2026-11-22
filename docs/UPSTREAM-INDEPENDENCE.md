@@ -16,6 +16,8 @@ The imported application still contains OpenMausBot names and service integratio
 - Electron sessions now cancel requests to known imported service domains, including saved workspace origins. Node fetches, subprocesses and links opened in the external browser need separate treatment and network capture.
 - The old Product Hunt launch card and built-in announcement pointing at the imported product were removed. Other imported Cloud and sponsor promotions remain under audit.
 - The main app/help/feedback links now target the Desk Yantra repository rather than upstream promotion.
+- The server team library catalog and fetch helpers no longer point by default to the upstream community team repository. When DESK_YANTRA_TEAM_LIBRARY_REPOSITORY is unset, the catalog returns empty and no outbound network request is made. The team library UI panel now renders the repository button only when an explicit repository URL is configured.
+- Rebranded template share export summaries in the server to Desk Yantra and updated expectations in server tests.
 
 ## Release blockers
 

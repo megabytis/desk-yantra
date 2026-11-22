@@ -4,9 +4,16 @@ import { PACKAGE_V1_VERSION } from "../shared/package-format.ts";
 import { fetchGithubFolder } from "./share-github.ts";
 import { parseTeamManifest, type ParsedTeamManifest } from "./team-manifest.ts";
 
-export const TEAM_LIBRARY_REPOSITORY = "https://github.com/milind-soni/openmausbot-teams";
-export const TEAM_LIBRARY_RAW_ROOT = "https://raw.githubusercontent.com/milind-soni/openmausbot-teams/main";
-export const TEAM_LIBRARY_CATALOG_URL = `${TEAM_LIBRARY_RAW_ROOT}/catalog.json`;
+export interface TeamLibraryLocation { repositoryUrl: string; rawRoot: string; catalogUrl: string }
+
+export function teamLibraryLocation(value = process.env.DESK_YANTRA_TEAM_LIBRARY_REPOSITORY): TeamLibraryLocation | null {
+  if (!value) return null;
+  const match = /^https:\/\/github\.com\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)$/.exec(value);
+  if (!match || match[1] === "." || match[1] === ".." || match[2] === "." || match[2] === "..") return null;
+  const repositoryUrl = `https://github.com/${match[1]}/${match[2]}`;
+  const rawRoot = `https://raw.githubusercontent.com/${match[1]}/${match[2]}/main`;
+  return { repositoryUrl, rawRoot, catalogUrl: `${rawRoot}/catalog.json` };
+}
 
 const MAX_CATALOG_BYTES = 256_000;
 const MAX_MANIFEST_BYTES = 1_000_000;
@@ -32,7 +39,7 @@ export interface TeamCatalogEntry {
 export interface TeamCatalog {
   format: "openmaus.catalog";
   version: 1;
-  repositoryUrl: typeof TEAM_LIBRARY_REPOSITORY;
+  repositoryUrl: string;
   teams: TeamCatalogEntry[];
 }
 
@@ -68,7 +75,7 @@ function stringList(value: unknown, field: string, maxItems: number): string[] {
 }
 
 /** Validate the remotely maintained index before any of it reaches the renderer. */
-export function parseTeamCatalog(value: unknown): TeamCatalog {
+export function parseTeamCatalog(value: unknown, repositoryUrl = ""): TeamCatalog {
   if (!isRecord(value) || value.format !== "openmaus.catalog" || value.version !== 1) {
     throw new Error("The team library catalog is not supported");
   }
@@ -117,7 +124,7 @@ export function parseTeamCatalog(value: unknown): TeamCatalog {
   return {
     format: "openmaus.catalog",
     version: 1,
-    repositoryUrl: TEAM_LIBRARY_REPOSITORY,
+    repositoryUrl,
     teams,
   };
 }
@@ -157,8 +164,9 @@ async function fetchText(url: string, maxBytes: number, fetcher: Fetcher): Promi
   return raw;
 }
 
-export async function fetchTeamCatalog(fetcher: Fetcher = fetch): Promise<TeamCatalog> {
-  return parseTeamCatalog(await fetchJson(TEAM_LIBRARY_CATALOG_URL, MAX_CATALOG_BYTES, fetcher));
+export async function fetchTeamCatalog(fetcher: Fetcher = fetch, location = teamLibraryLocation()): Promise<TeamCatalog> {
+  return location ? parseTeamCatalog(await fetchJson(location.catalogUrl, MAX_CATALOG_BYTES, fetcher), location.repositoryUrl)
+    : { format: "openmaus.catalog", version: 1, repositoryUrl: "", teams: [] };
 }
 
 export type ParsedShareableTeam = ParsedTeamManifest | ParsedBotPackage | PackageDocument;
@@ -176,16 +184,17 @@ async function fetchShareable(url: string, fetcher: Fetcher): Promise<ParsedShar
     : parseShareable(await fetchJson(url, MAX_MANIFEST_BYTES, fetcher));
 }
 
-export async function fetchLibraryTeam(slug: string, fetcher: Fetcher = fetch): Promise<ParsedShareableTeam> {
+export async function fetchLibraryTeam(slug: string, fetcher: Fetcher = fetch, location = teamLibraryLocation()): Promise<ParsedShareableTeam> {
   if (!/^[a-z0-9][a-z0-9-]*$/.test(slug)) throw new Error("That team name is invalid");
-  const catalog = await fetchTeamCatalog(fetcher);
+  if (!location) throw Object.assign(new Error("The team library is not configured"), { status: 404 });
+  const catalog = await fetchTeamCatalog(fetcher, location);
   const entry = catalog.teams.find((team) => team.slug === slug);
   if (!entry) throw Object.assign(new Error("That library team was not found"), { status: 404 });
   if (entry.folder) {
-    const folder = await fetchGithubFolder(`${TEAM_LIBRARY_RAW_ROOT}/${entry.folder}`, fetcher);
+    const folder = await fetchGithubFolder(`${location.rawRoot}/${entry.folder}`, fetcher);
     return folder.kind === "package" ? folder.document : parseTeamManifest(folder.manifest as Parameters<typeof parseTeamManifest>[0]);
   }
-  return fetchShareable(`${TEAM_LIBRARY_RAW_ROOT}/${entry.package ?? entry.manifest}`, fetcher);
+  return fetchShareable(`${location.rawRoot}/${entry.package ?? entry.manifest}`, fetcher);
 }
 
 const MAX_CHIEF_TEAMS = 30;
@@ -212,12 +221,13 @@ function libraryRoles(team: ParsedShareableTeam): LibraryRole[] {
 
 /** Each ready-made team's name, one line and roles: enough for a Chief to create the team itself, one specialist at a
  * time. A team whose file cannot be read keeps its name and summary with no roles. */
-export async function libraryTeamRoles(fetcher: Fetcher = fetch): Promise<LibraryTeamRoles[]> {
-  const catalog = await fetchTeamCatalog(fetcher);
+export async function libraryTeamRoles(fetcher: Fetcher = fetch, location = teamLibraryLocation()): Promise<LibraryTeamRoles[]> {
+  if (!location) return [];
+  const catalog = await fetchTeamCatalog(fetcher, location);
   return Promise.all(catalog.teams.slice(0, MAX_CHIEF_TEAMS).map(async (entry) => ({
     name: entry.name,
     summary: entry.summary,
-    roles: await fetchShareable(`${TEAM_LIBRARY_RAW_ROOT}/${entry.package ?? entry.manifest}`, fetcher).then(libraryRoles, () => []),
+    roles: await fetchShareable(`${location.rawRoot}/${entry.package ?? entry.manifest}`, fetcher).then(libraryRoles, () => []),
   })));
 }
 

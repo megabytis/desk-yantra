@@ -3,14 +3,16 @@ import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
 import {
-  TEAM_LIBRARY_CATALOG_URL,
-  TEAM_LIBRARY_RAW_ROOT,
   fetchGithubTeam,
   fetchLibraryTeam,
+  fetchTeamCatalog,
   githubManifestUrls,
   libraryTeamRoles,
   parseTeamCatalog,
+  teamLibraryLocation,
 } from "./team-library.ts";
+
+const LOCATION = teamLibraryLocation("https://github.com/example/desk-yantra-teams")!;
 
 const manifest = {
   format: "openmaus.team",
@@ -55,9 +57,20 @@ function response(value: unknown, status = 200): Response {
 }
 
 describe("team library", () => {
+  it("does not contact a built-in repository when none is configured", async () => {
+    expect(teamLibraryLocation("")).toBeNull();
+    expect(teamLibraryLocation("https://github.com/example/team")).toMatchObject({ repositoryUrl: "https://github.com/example/team" });
+    expect(teamLibraryLocation("https://github.com/example/team/extra")).toBeNull();
+    expect(teamLibraryLocation("http://github.com/example/team")).toBeNull();
+    const fetcher = vi.fn(async () => { throw new Error("unexpected network request"); }) as unknown as typeof fetch;
+    expect(await fetchTeamCatalog(fetcher, null)).toEqual({ format: "openmaus.catalog", version: 1, repositoryUrl: "", teams: [] });
+    expect(await libraryTeamRoles(fetcher, null)).toEqual([]);
+    await expect(fetchLibraryTeam("engineering", fetcher, null)).rejects.toMatchObject({ status: 404 });
+    expect(fetcher).not.toHaveBeenCalled();
+  });
   it("validates catalog paths and adds the trusted repository URL", () => {
-    const parsed = parseTeamCatalog(catalog);
-    expect(parsed.repositoryUrl).toBe("https://github.com/milind-soni/openmausbot-teams");
+    const parsed = parseTeamCatalog(catalog, LOCATION.repositoryUrl);
+    expect(parsed.repositoryUrl).toBe(LOCATION.repositoryUrl);
     expect(parsed.teams[0]).toMatchObject({ slug: "engineering", members: 1 });
 
     const unsafe = structuredClone(catalog);
@@ -68,12 +81,12 @@ describe("team library", () => {
   it("loads only the manifest selected by the trusted catalog", async () => {
     const fetcher = vi.fn(async (url: string | URL | Request) => {
       const target = String(url);
-      if (target === TEAM_LIBRARY_CATALOG_URL) return response(catalog);
-      if (target === `${TEAM_LIBRARY_RAW_ROOT}/teams/engineering/team.mausteam.json`) return response(manifest);
+      if (target === LOCATION.catalogUrl) return response(catalog);
+      if (target === `${LOCATION.rawRoot}/teams/engineering/team.mausteam.json`) return response(manifest);
       return response({}, 404);
     }) as unknown as typeof fetch;
 
-    const loaded = await fetchLibraryTeam("engineering", fetcher);
+    const loaded = await fetchLibraryTeam("engineering", fetcher, LOCATION);
     if (loaded.format !== "openmaus.team") throw new Error("expected a legacy team");
     expect(loaded.team.name).toBe("Engineering");
     expect(fetcher).toHaveBeenCalledTimes(2);
@@ -139,8 +152,8 @@ describe("the team library as a Chief of Staff reads it", () => {
     ],
   };
   const fetcher = vi.fn(async (url: string | URL | Request) => {
-    const target = String(url).slice(TEAM_LIBRARY_RAW_ROOT.length + 1);
-    if (String(url) === TEAM_LIBRARY_CATALOG_URL) return response(library);
+    const target = String(url).slice(LOCATION.rawRoot.length + 1);
+    if (String(url) === LOCATION.catalogUrl) return response(library);
     if (target === "teams/engineering/team.mausteam.json") return response(manifest);
     if (target === "packages/signal-desk.md") return new Response(fixture("legacy-botmrr.v1.md"));
     if (target === "teams/sales-desk/team.mausteam.json") return new Response(fixture("full-team.v2.json"));
@@ -149,7 +162,7 @@ describe("the team library as a Chief of Staff reads it", () => {
   }) as unknown as typeof fetch;
 
   it("lists every ready-made team with its summary and roles, marks the team's own lead, and keeps a team whose file is missing", async () => {
-    const teams = await libraryTeamRoles(fetcher);
+    const teams = await libraryTeamRoles(fetcher, LOCATION);
     expect(teams.slice(0, 4)).toEqual([
       { name: "Engineering Team", summary: "Plan and ship software.", roles: [{ name: "Ada", title: "Tech Lead", does: "Coordinates the work" }] },
       { name: "Signal Desk", summary: "Find and explain the signal.", roles: [
@@ -170,6 +183,6 @@ describe("the team library as a Chief of Staff reads it", () => {
   });
 
   it("fails when the catalog itself can't be read", async () => {
-    await expect(libraryTeamRoles(vi.fn(async () => response({}, 503)) as unknown as typeof fetch)).rejects.toThrow("HTTP 503");
+    await expect(libraryTeamRoles(vi.fn(async () => response({}, 503)) as unknown as typeof fetch, LOCATION)).rejects.toThrow("HTTP 503");
   });
 });
