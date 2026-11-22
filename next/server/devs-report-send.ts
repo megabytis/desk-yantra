@@ -8,8 +8,6 @@ import { z } from "zod";
 import { DEVS_REPORT_LIMITS, withoutContact, type DevsReportPayload } from "./devs-report.ts";
 
 export const BUG_REPORT_PATH = "/api/bug-reports";
-export const PRODUCTION_CLOUD_ORIGIN = "https://cloud.openmausbot.com";
-export const STAGING_CLOUD_ORIGIN = "https://omb-cloud-staging.fly.dev";
 const SEND_TIMEOUT_MS = 20_000;
 const ANSWER_MAX_BYTES = 16 * 1024;
 
@@ -20,9 +18,8 @@ export type SendOutcome =
   /** The endpoint refused this report; sending it again would be refused again. */
   | { ok: false; retry: false; why: "refused"; detail: string };
 
-/** OMB_BUG_REPORT_URL (an https address, or http on this machine's loopback, for fixtures), else a Cloud home's own
- * Admin origin, else the staging or production Cloud. */
-export function bugReportEndpoint(env: NodeJS.ProcessEnv, cloudOrigin?: string | null): string {
+/** Reports leave Desk Yantra only when its operator configured an explicit endpoint. */
+export function bugReportEndpoint(env: NodeJS.ProcessEnv, _cloudOrigin?: string | null): string {
   const explicit = env.OMB_BUG_REPORT_URL?.trim();
   if (explicit) {
     try {
@@ -31,8 +28,7 @@ export function bugReportEndpoint(env: NodeJS.ProcessEnv, cloudOrigin?: string |
       if ((url.protocol === "https:" || loopback) && !url.username && !url.password) return url.href;
     } catch { /* not an address: the default below */ }
   }
-  const origin = cloudOrigin ?? (env.OMB_CLOUD_STAGING === "1" ? STAGING_CLOUD_ORIGIN : PRODUCTION_CLOUD_ORIGIN);
-  return `${origin.replace(/\/+$/, "")}${BUG_REPORT_PATH}`;
+  return "";
 }
 
 async function boundedJson(response: Response): Promise<Record<string, unknown>> {
@@ -72,7 +68,8 @@ async function post(endpoint: string, payload: DevsReportPayload, fetcher: typeo
   }
 }
 
-export const devsReportSender = (endpoint: string, fetcher: typeof fetch = fetch) => (payload: DevsReportPayload) => sendDevsReport(endpoint, payload, fetcher);
+export const devsReportSender = (endpoint: string, fetcher: typeof fetch = fetch) => (payload: DevsReportPayload) =>
+  endpoint ? sendDevsReport(endpoint, payload, fetcher) : Promise.resolve({ ok: false as const, retry: false as const, why: "refused" as const, detail: "Bug reporting is not configured in this Desk Yantra installation." });
 
 export async function sendDevsReport(endpoint: string, payload: DevsReportPayload, fetcher: typeof fetch = fetch): Promise<SendOutcome> {
   let answer = await post(endpoint, payload, fetcher);
@@ -138,4 +135,4 @@ export async function askReportStatus(endpoint: string, question: ReportStatusQu
 }
 
 export const devsStatusAsker = (reportEndpoint: string, home: ReportStatusHome | null, fetcher: typeof fetch = fetch) =>
-  (question: ReportStatusQuestion) => askReportStatus(bugReportStatusEndpoint(reportEndpoint), question, home, fetcher);
+  (question: ReportStatusQuestion) => reportEndpoint ? askReportStatus(bugReportStatusEndpoint(reportEndpoint), question, home, fetcher) : Promise.resolve(null);

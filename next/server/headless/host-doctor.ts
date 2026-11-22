@@ -6,7 +6,6 @@ import { existsSync, readdirSync, readFileSync, statfsSync } from "node:fs";
 import { arch, cpus, homedir, release, totalmem } from "node:os";
 import { dirname, join, posix, resolve } from "node:path";
 
-import { PRODUCTION_CLOUD_ORIGIN } from "../devs-report-send.ts";
 import { EXIT, flag, usageError } from "./args.ts";
 import type { VerbContext, VerbOutcome } from "./context.ts";
 
@@ -288,18 +287,7 @@ export function systemProbe(): HostProbe {
         return null;
       }
     },
-    async clockOffset() {
-      try {
-        const before = Date.now();
-        const response = await fetch(PRODUCTION_CLOUD_ORIGIN, { method: "HEAD", redirect: "manual", signal: AbortSignal.timeout(5_000) });
-        const after = Date.now();
-        const date = Date.parse(response.headers.get("date") ?? "");
-        // An HTTP date is whole seconds: the server's clock was somewhere in the second after it.
-        return Number.isFinite(date) ? (before + after) / 2 - (date + 500) : null;
-      } catch {
-        return null;
-      }
-    },
+    async clockOffset() { return null; },
     async serverAnswers(port) {
       try {
         const response = await fetch(`http://127.0.0.1:${port}/api/health`, { signal: AbortSignal.timeout(2_000) });

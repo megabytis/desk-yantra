@@ -28,6 +28,8 @@ Work in coherent batches. A build or scripted fixture does not prove a real bot 
 
 The standalone browser server now has an explicit `--local-workspace` opt-in. It mounts scoped file tools and a Bubblewrap terminal as `desk_local_workspace` for bots; delegated bots can use these tools without selecting the host screen. The native **This computer** screen option remains separate and unavailable on the owner's Hyprland session until its desktop driver and compositor plugin are installed and live-qualified. An isolated full-server OpenAI-compatible fake-provider conversation verified tool availability, approval before a write, and the file after approval. A real provider and the owner's session remain unverified, so Gate 4 is still open. Browser search failures are a separate follow-up.
 
+The browser runtime now gives a fresh-snapshot recovery hint for expired page elements, and a real Chromium loopback checklist passed. The source audit found three outbound upstream diagnostics paths: Electron launch analytics, the doctor's clock probe, and default bug-report/status endpoints. These are disabled unless a report destination is explicitly configured. Next release blockers remain upstream Cloud/account/relay routes, user-facing branding, packaged network capture, and clean-install qualification; see `docs/UPSTREAM-INDEPENDENCE.md` and actual checks in `docs/ACCEPTANCE.md`.
+
 ## Handoff for Antigravity and other agents
 
 1. Read this file first, then `PLANNING.md`, `docs/ACCEPTANCE.md`, upstream `AGENTS.md`, `LICENSING.md`, `NOTICE` and `docs/verification/README.md`.

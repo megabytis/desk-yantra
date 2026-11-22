@@ -762,3 +762,9 @@ Contributor: **OpenAI Codex (GPT-6)**. Added a full-server test with an OpenAI-c
 ### Browser element recovery — 2026-11-22
 
 Contributor: **OpenAI Codex (GPT-6)**. The owner's recorded browser-tool failures included `Element not found` for changing page refs. The browser runtime now appends a fresh-snapshot and one-retry instruction to that tool error, including relayed browser actions. `pnpm exec vitest run server/browser-runtime.test.ts`: **101 passed**, exit code 0 outside the sandbox because the suite starts a fake browser process. This is a recovery hint, not proof that every reported browser-search task succeeds; a specific failed search must be reproduced separately.
+
+The local real-Chromium browser checklist was run with the existing Playwright Chromium binary: **16 passed** against isolated loopback pages. The earlier run without an explicit Chrome path skipped all 16 tests; it was not counted as passing browser verification. The recorded owner tool spans contained `Element not found` errors for click and fill, while later browser actions completed; no separate search-tool error was recorded in those spans.
+
+## Upstream outbound diagnostics shutdown — 2026-11-22
+
+Contributor: **OpenAI Codex (GPT-6)**. Removed the Electron main-process PostHog launch sender, the headless doctor's automatic upstream Cloud clock probe, and the default upstream bug-report and status endpoints. Bug reports now require an explicit operator endpoint; otherwise they return a local not-configured result without calling `fetch`. Tests: Electron launch analytics **1 passed**; bug-report and host-doctor **33 passed, 1 skipped**; server TypeScript check **passed**. Upstream Cloud/account/relay flows still need a separate audit and are not claimed independent.
