@@ -4,7 +4,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { ArrowUpRight, Check, ChevronDown, Copy, FolderDown, Github, Library, Loader2, MoreHorizontal, RefreshCw, Trash2, Upload } from "lucide-react";
 
-import { COMMUNITY_UPLOAD_URL, TEMPLATE_UPDATE_MESSAGE, type TemplateAvatar, type TemplateCard, type TemplateDetails, type TemplateRepoPublish } from "../../shared/share-card";
+import { TEMPLATE_UPDATE_MESSAGE, type TemplateAvatar, type TemplateCard, type TemplateDetails, type TemplateRepoPublish } from "../../shared/share-card";
 import { botBodyId } from "../../shared/bot-body";
 import { MAUS_COLOR_NAMES, type MausColor } from "../../shared/wire";
 import { openExternalLink } from "@/lib/app-links";
@@ -155,9 +155,6 @@ export function TemplateButtons({ actions, primary, view, extra }: {
     <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
       {card.fallback ? <>
         {saveButton}
-        <button type="button" data-template-upload onClick={() => openLink(COMMUNITY_UPLOAD_URL)} className={cn(ASK_CHIP, ASK_CHIP_IDLE)}>
-          <Github size={14} aria-hidden="true" />{t("template.uploadOnGithub")}
-        </button>
       </> : card.status === "published" && card.link ? <>
         <CopyLinkButton link={card.link} />
         {view.url && <button type="button" onClick={() => openLink(view.url!)} className={cn(ASK_CHIP, ASK_CHIP_IDLE)}>
@@ -178,7 +175,7 @@ export function TemplateButtons({ actions, primary, view, extra }: {
 export function TemplateNotes({ actions }: { actions: TemplateActions }) {
   const { card, error, saved, teamNote } = actions;
   return <>
-    {card.fallback && <p className="mt-1.5 text-[12px] text-ink-secondary">{t(card.fallback === "sign_in" ? "template.signInToPublish" : "template.publishUnavailable")}</p>}
+    {card.fallback && <p className="mt-1.5 text-[12px] text-ink-secondary">{t("template.publishUnavailable")}</p>}
     {card.status === "failed" && card.error && <p role="alert" dir="auto" className="mt-1.5 text-[12px] text-danger">{card.error}</p>}
     {error && <p role="alert" dir="auto" className="mt-1.5 text-[12px] text-danger">{error}</p>}
     {saved && <p role="status" dir="auto" className="mt-1.5 truncate text-[12px] text-ink-secondary" title={saved}>{t("template.savedTo", { path: saved })}</p>}

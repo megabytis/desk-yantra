@@ -42,7 +42,7 @@ function host(options: { submit?: (submission: unknown) => Promise<CommunityResu
   const dataDir = scratch(), botFolder = scratch();
   const patches: Array<{ messageId: string; card: TemplateCard }> = [];
   const bots = options.bots ?? [bot()];
-  const publisher = createCommunityPublisher({ access: () => options.signedIn === false ? null : { kind: "desktop", url: "https://admin.example.com/api/cloud/pages/token", token: "t" } });
+  const publisher = createCommunityPublisher({ enabled: true, access: () => options.signedIn === false ? null : { kind: "desktop", url: "https://admin.example.com/api/cloud/pages/token", token: "t" } });
   const share = createShareHost({
     dataDir, bots: () => bots, groups: () => [], routines: () => [routine], brief: () => options.brief,
     collectTeamSkills: (list) => ({ ok: true, skipped: [], skillsByBot: new Map(list.map((each) => [each.id, [{ name: "triage", description: "Sort the inbox.", instructions: skillText, enabled: true }]])) }),
@@ -109,13 +109,24 @@ describe("making a template", () => {
 });
 
 describe("publishing", () => {
+  it("keeps the imported community publisher unavailable by default without contacting its service", async () => {
+    let requested = false;
+    const publisher = createCommunityPublisher({
+      access: () => ({ kind: "desktop", url: "https://admin.example.com/api/cloud/pages/token", token: "t" }),
+      fetch: (async () => { requested = true; throw new Error("unexpected request"); }) as typeof fetch,
+    });
+    expect(publisher.availability()).toBe("unavailable");
+    expect(await publisher.submit({ slug: "helper", files: {} })).toMatchObject({ ok: false, reason: "unavailable" });
+    expect(requested).toBe(false);
+  });
+
   it("offers the folder and GitHub's upload page when this app isn't signed in or the service isn't there", async () => {
     const { share } = host({ signedIn: false });
     const made = share.export({ scope: "bot", bot: bot() }, []);
     expect(made.card.fallback).toBe("sign_in");
     expect(await share.publish(made.card.id)).toMatchObject({ status: "draft", fallback: "sign_in" });
     for (const status of [404, 501]) {
-      const publisher = createCommunityPublisher({ access: () => ({ kind: "desktop", url: "https://admin.example.com/api/cloud/pages/token", token: "t" }),
+      const publisher = createCommunityPublisher({ enabled: true, access: () => ({ kind: "desktop", url: "https://admin.example.com/api/cloud/pages/token", token: "t" }),
         fetch: (async () => new Response("{}", { status })) as typeof fetch });
       const result = await publisher.submit({ slug: "helper", files: {} });
       expect(result).toMatchObject({ ok: false, reason: "unavailable" });
@@ -124,7 +135,7 @@ describe("publishing", () => {
 
   it("posts the folder's files to the Admin with the account's sign-in, and shows the link it answers with", async () => {
     let sent: { url: string; init: RequestInit } | null = null;
-    const publisher = createCommunityPublisher({
+    const publisher = createCommunityPublisher({ enabled: true,
       access: () => ({ kind: "desktop", url: "https://admin.example.com/api/cloud/pages/token", token: "omb_pd_token" }),
       fetch: (async (url: string, init: RequestInit) => {
         sent = { url, init };
@@ -143,7 +154,7 @@ describe("publishing", () => {
     const home = { kind: "home" as const, url: "https://admin.example.com/api/cloud/pages/token", machineId: "cm-home", secret: "s".repeat(43) };
     let headers: Record<string, string> = {}, body = "";
     let answer = Response.json({ error: "slug_taken", message: "Someone else already shares a template by that name." }, { status: 409 });
-    const publisher = createCommunityPublisher({ access: () => home, now: () => 1_792_670_400_000,
+    const publisher = createCommunityPublisher({ enabled: true, access: () => home, now: () => 1_792_670_400_000,
       fetch: (async (_url: string, init: RequestInit) => { headers = init.headers as Record<string, string>; body = String(init.body); return answer; }) as typeof fetch });
     expect(await publisher.submit({ slug: "a", files: { "bot.md": "x" } })).toEqual({ ok: false, reason: "failed", message: "Someone else already shares a template by that name." });
     const expected = pagesHomeSignature(home.secret, home.machineId, headers["x-omb-cloud-timestamp"]!, headers["x-omb-cloud-nonce"]!, body, "omb-community-v1");
@@ -186,7 +197,7 @@ describe("publishing", () => {
   });
 
   it("never shows a link outside the community repository", async () => {
-    const publisher = createCommunityPublisher({ access: () => ({ kind: "desktop", url: "https://admin.example.com/x", token: "t" }),
+    const publisher = createCommunityPublisher({ enabled: true, access: () => ({ kind: "desktop", url: "https://admin.example.com/x", token: "t" }),
       fetch: (async () => Response.json({ link: "https://github.com/someone/else/tree/main/teams/a", prUrl: "https://github.com/milind-soni/openmausbot-teams/pull/1" })) as typeof fetch });
     expect(await publisher.submit({ slug: "a", files: {} })).toMatchObject({ ok: false, reason: "failed" });
   });

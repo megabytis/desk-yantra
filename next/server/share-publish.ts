@@ -39,16 +39,18 @@ const said = (body: Record<string, unknown>, fallback: string) =>
   typeof body.message === "string" && body.message.trim() ? body.message.trim().slice(0, 300)
     : typeof body.error === "string" && body.error.trim() ? body.error.trim().slice(0, 300) : fallback;
 
-export function createCommunityPublisher(options: { access: () => PagesAccess | null; notOffered?: () => boolean; selfHosted?: boolean; fetch?: typeof fetch; now?: () => number }) {
+export function createCommunityPublisher(options: { access: () => PagesAccess | null; enabled?: boolean; notOffered?: () => boolean; selfHosted?: boolean; fetch?: typeof fetch; now?: () => number }) {
   const http = options.fetch ?? fetch, now = options.now ?? Date.now;
   /** Why Publish can't be offered here, before trying; null when it can. */
   const availability = (): "sign_in" | "unavailable" | null => {
+    if (options.enabled !== true) return "unavailable";
     if (options.access()) return null;
     return options.selfHosted || options.notOffered?.() ? "unavailable" : "sign_in";
   };
   return {
     availability,
     async submit(submission: CommunitySubmission): Promise<CommunityResult> {
+      if (options.enabled !== true) return { ok: false, reason: "unavailable", message: "Publishing isn't available here." };
       const access = options.access();
       if (!access) {
         const reason = availability() ?? "unavailable";

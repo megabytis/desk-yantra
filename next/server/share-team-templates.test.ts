@@ -35,7 +35,7 @@ const MEMBER = { kind: "session", scopes: ["client"], via: "bearer", session: { 
 
 function setup(options: { team?: boolean; github?: GithubConnection; fetchTemplate?: () => Promise<never> } = {}) {
   const dataDir = scratch(), botFolder = scratch();
-  const publisher = createCommunityPublisher({ access: () => null, selfHosted: true });
+  const publisher = createCommunityPublisher({ enabled: true, access: () => null, selfHosted: true });
   const host = createShareHost({
     dataDir, bots: () => [helper], groups: () => [], routines: () => [], brief: () => undefined,
     collectTeamSkills: () => ({ ok: true, skipped: [], skillsByBot: new Map([["bot-1", [{ name: "report", description: "Weekly report.", instructions: SKILL, enabled: true }]]]) }),

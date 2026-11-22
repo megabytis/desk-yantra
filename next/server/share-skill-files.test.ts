@@ -27,7 +27,7 @@ const helper = { id: "bot-1", name: "Reporter", title: "Reports", color: "blue" 
 
 function host(stored: Array<{ path: string; content: string | Uint8Array }> | null, submitted: CommunitySubmission[] = []) {
   const dataDir = scratch(), botFolder = scratch();
-  const publisher = createCommunityPublisher({ access: () => ({ kind: "desktop", url: "https://admin.example.com/api/cloud/pages/token", token: "t" }) });
+  const publisher = createCommunityPublisher({ enabled: true, access: () => ({ kind: "desktop", url: "https://admin.example.com/api/cloud/pages/token", token: "t" }) });
   return createShareHost({
     dataDir, bots: () => [helper], groups: () => [], routines: () => [], brief: () => undefined,
     collectTeamSkills: () => ({ ok: true, skipped: [], skillsByBot: new Map([["bot-1", [{ name: "report", description: "Weekly report.", instructions: SKILL, enabled: true }]]]) }),
