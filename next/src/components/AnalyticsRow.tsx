@@ -3,7 +3,7 @@ import { analyticsEnabled, setAnalyticsEnabled } from "@/lib/analytics";
 import { t } from "@/lib/i18n";
 import { SettingRow, Switch } from "./SettingsPrimitives";
 
-const ANALYTICS_DOC_URL = "https://github.com/milind-soni/OpenMausBot/blob/main/docs/analytics.md";
+const ANALYTICS_DOC_URL = "https://github.com/megabytis/desk-yantra/tree/main/docs";
 
 export function AnalyticsRow({ simple = false }: { simple?: boolean }) {
   const [on, setOn] = useState(analyticsEnabled);
