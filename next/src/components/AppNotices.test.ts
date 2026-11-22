@@ -38,7 +38,7 @@ vi.mock("@/components/EngineLibrary", () => ({ engineReady: (instance: { snapsho
   instance.snapshot.state === "available" && instance.snapshot.authenticated !== false }));
 import { AppNotices } from "./AppNotices";
 import { TwoPlacesCard } from "./TwoPlacesCard";
-import { BOAT_OFFER_NOTICE, CLOUD_INTRO, GROK_MOVE_NOTICE, launchNotice, localDay, MODELGO_OFFER_NOTICE, PRODUCT_HUNT_NOTICE, PRODUCT_HUNT_UNTIL, PRODUCT_HUNT_URL, STAR_NOTICE, TEAMS_NOTICE, WHATS_NEW_NOTICE } from "@/lib/notices";
+import { BOAT_OFFER_NOTICE, CLOUD_INTRO, GROK_MOVE_NOTICE, launchNotice, localDay, MODELGO_OFFER_NOTICE, PRODUCT_HUNT_NOTICE, STAR_NOTICE, TEAMS_NOTICE, WHATS_NEW_NOTICE } from "@/lib/notices";
 import { BOAT_OFFER, boatClaimMailto } from "@/lib/boat-offer";
 import { track } from "@/lib/analytics";
 import { ADVANCED_MODE_KEY, setAdvancedMode } from "@/lib/interface-mode";
@@ -61,7 +61,6 @@ const STAR = "Enjoying MausBot?";
 const signedOut: CloudAccountState = { status: "signed-out" };
 const free: CloudAccountState = { status: "connected", account: { id: "a", email: "person@example.test" }, entitlement: { plan: "free", status: "inactive", expiresAt: null, version: 1 } };
 const paid = (extra: Partial<CloudAccountState> = {}): CloudAccountState => ({ ...free, entitlement: { plan: "pro", tier: "pro", status: "active", expiresAt: NOW + 30 * DAY, version: 2 }, ...extra });
-const ready = { status: "ready" as const, origin: "https://omb-u-1.fly.dev" };
 const trial = (state: CloudTrial["state"], extra: Partial<CloudTrial> = {}): CloudTrial =>
   ({ state, tier: "pro", endsAt: NOW + DAY, amount: 4900, chargeAt: NOW + DAY, holdUntil: null, deleteAt: null, keep: "none", ...extra });
 
@@ -373,67 +372,13 @@ describe("This computer's Cloud sign-in card and the star", () => {
   });
 });
 
-describe("the Product Hunt launch card", () => {
-  const PH = "live on Product Hunt";
-  const fresh = () => { storage.delete(PRODUCT_HUNT_NOTICE); };
-
-  it("waits for a new install's first reply, so it never lands on the first chat", async () => {
-    fresh(); f.state.bots = [];
-    expect(await launch()).not.toContain(PH);
-    f.state.bots = structuredClone(FIRST_REPLY);
-    expect(await launch()).toContain(PH);
-  });
-
-  it("comes first, for everyone (new or not, any plan), and the upvote opens the launch and ends it for good", async () => {
-    fresh(); account = paid({ machine: ready });
+describe("the retired Product Hunt promotion", () => {
+  it("does not show or open an imported promotional link", async () => {
+    storage.delete(PRODUCT_HUNT_NOTICE);
     const html = await launch();
-    expect(html).toContain(PH); expect(html).toContain("Upvote on Product Hunt");
-    expect(html).not.toContain(STAR); expect(html).not.toContain("Your always-on bots are in the Cloud");
-    press("Upvote on Product Hunt"); await flush();
-    expect(window.ogb?.openExternal).toHaveBeenCalledWith(PRODUCT_HUNT_URL);
-    expect(vi.mocked(track)).toHaveBeenCalledWith("product_hunt_card", { action: "upvote" });
-    expect(storage.get(PRODUCT_HUNT_NOTICE)).toBe("1"); expect(hints()).toContain(PRODUCT_HUNT_NOTICE);
-    expect(await launch()).not.toContain(PH);
-  });
-
-  it("Not now, the X and Escape end it for good too", async () => {
-    fresh();
-    expect(await launch()).toContain(PH);
-    press("Not now");
-    expect(vi.mocked(track)).toHaveBeenCalledWith("product_hunt_card", { action: "not_now" });
-    expect(storage.get(PRODUCT_HUNT_NOTICE)).toBe("1");
-    expect(await launch()).not.toContain(PH);
-  });
-
-  it("never while the bots move to My Cloud, nor in the first minutes after; the star and the Cloud offers wait too", async () => {
-    fresh(); returning(); storage.delete(STAR_NOTICE);
-    const line = (move: unknown) => desk.handlers.set("cloud-send:notice", () => ({ ready: true, bots: [], move }));
-    for (const move of [{ phase: "copy", chats: { done: 1, total: 5 } }, { phase: "wait" }, { phase: "finishing" }, { phase: "copy", failing: { error: null } }, { phase: "home-again" }]) {
-      line(move);
-      const html = await launch();
-      expect(html, JSON.stringify(move)).not.toContain(PH); expect(html, JSON.stringify(move)).not.toContain(STAR);
-    }
-    line({ phase: "done", at: NOW - 60_000, phone: false, held: [] });
-    expect(await launch(), "a minute after: still quiet").not.toContain(PH);
-    line(undefined);
-    expect(await settle(), "the done line closed a minute after: still quiet").not.toContain(PH);
-    line({ phase: "done", at: NOW - 6 * 60_000, phone: false, held: [] });
-    expect(await launch(), "some minutes after: the card shows").toContain(PH);
-    line(undefined);
-    expect(await launch(), "no move at all").toContain(PH);
-    desk.handlers.set("cloud-send:notice", () => { throw new Error("cloud-send:notice is only available in this app's window"); });
-    expect(await launch(), "a page main tells nothing").toContain(PH);
-    desk.handlers.set("cloud-send:notice", () => new Promise(() => {}));
-    expect(await launch(), "until main says whether a move goes, nothing shows").not.toContain(PH);
-  });
-
-  it("never on a branded build or an organization's desktop, never after the launch window, never over setup or an update", async () => {
-    fresh(); f.brand = "file";
-    expect(await launch()).not.toContain(PH);
-    f.brand = "default"; now = PRODUCT_HUNT_UNTIL;
-    expect(await launch()).not.toContain(PH);
-    now = NOW; f.updater = { status: "available", version: "9.9.9" };
-    expect(await launch()).not.toContain(PH);
+    expect(html).not.toContain("live on Product Hunt");
+    expect(html).not.toContain("Upvote on Product Hunt");
+    expect(window.ogb?.openExternal).not.toHaveBeenCalledWith(expect.stringContaining("producthunt.com"));
   });
 });
 
@@ -604,7 +549,7 @@ describe("Boat's credit offer", () => {
 });
 
 describe("What's new after the update", () => {
-  const PRO = "Meet the new MausBot Cloud", TEAM = "Shared bots for your whole team";
+  const PRO = "Meet the new Desk Yantra Cloud", TEAM = "Shared bots for your whole team";
   const ID = WHATS_NEW_NOTICE;
   const BOAT = "$50 of Boat credit for you";
   let modal: boolean;
@@ -844,7 +789,7 @@ describe("What's new after the update", () => {
 });
 
 describe("the product-updates question after the update", () => {
-  const QUESTION = "Get MausBot updates?", POPUP = "Meet the new MausBot Cloud";
+  const QUESTION = "Get MausBot updates?", POPUP = "Meet the new Desk Yantra Cloud";
   const RECEIPT = "R".repeat(43);
   let saved: unknown;
   let accountAnswer: { status: string; textVersion: string } | null;
@@ -971,7 +916,7 @@ describe("no Use my Mac popup", () => {
 });
 
 describe("the Move from Grok Bot popup", () => {
-  const TITLE = "Move from Grok Bot", WHATS_NEW = "Meet the new MausBot Cloud", DIALOG = "THE MOVE DIALOG";
+  const TITLE = "Move from Grok Bot", WHATS_NEW = "Meet the new Desk Yantra Cloud", DIALOG = "THE MOVE DIALOG";
   let modal: boolean;
   const events = () => vi.mocked(track).mock.calls.filter(([name]) => name === "grok_move_popup").map(([, props]) => (props as { action: string }).action);
   const reads = () => vi.mocked(api).mock.calls.map(([path]) => path).filter(path => path === "/api/setup-import/grok");
@@ -1109,7 +1054,7 @@ describe("the Move from Grok Bot popup", () => {
 });
 
 describe("the Simple mode popup after the update", () => {
-  const TITLE = "Try the new Simple mode", ON = "You&#x27;re on Simple mode", POPUP = "Meet the new MausBot Cloud";
+  const TITLE = "Try the new Simple mode", ON = "You&#x27;re on Simple mode", POPUP = "Meet the new Desk Yantra Cloud";
   let modal: boolean;
   const prompts = () => vi.mocked(track).mock.calls.filter(([event]) => event === "simple_mode_prompt").map(([, props]) => props);
 
@@ -1480,11 +1425,11 @@ describe("ModelGo's sponsor card", () => {
   it("after an update, What's new takes the launch and the card follows it in that same launch once it closes, then never again", async () => {
     returning(); desk.saved = null; storage.delete(WHATS_NEW_NOTICE);
     const first = await launch();
-    expect(first).toContain("Meet the new MausBot Cloud"); expect(first, "never two at once").not.toContain(TITLE);
+    expect(first).toContain("Meet the new Desk Yantra Cloud"); expect(first, "never two at once").not.toContain(TITLE);
     expect(events()).toEqual([]);
     press("Not now"); await flush();
     const after = await settle();
-    expect(after, "right after What's new closes").toContain(TITLE); expect(after).not.toContain("Meet the new MausBot Cloud");
+    expect(after, "right after What's new closes").toContain(TITLE); expect(after).not.toContain("Meet the new Desk Yantra Cloud");
     expect(events()).toEqual([{ action: "shown", place: "popup" }]);
     expect(launchNotice(), "What's new keeps the launch").toBe(WHATS_NEW_NOTICE);
     expect(await launch(), "a reload in the same launch").toContain(TITLE);
@@ -1614,11 +1559,11 @@ describe("cards from the announcements file", () => {
     feed = [card("first-card"), card("second-card")];
     returning(); desk.saved = null; storage.delete(WHATS_NEW_NOTICE); storage.set(CLOUD_INTRO, "1");
     const popup = await launch();
-    expect(popup).toContain("Meet the new MausBot Cloud"); expect(popup, "never two at once").not.toContain("Title of first-card");
+    expect(popup).toContain("Meet the new Desk Yantra Cloud"); expect(popup, "never two at once").not.toContain("Title of first-card");
     expect(events()).toEqual([]);
     press("Not now"); await flush();
     const after = await settle();
-    expect(after, "right after What's new closes").toContain("Title of first-card"); expect(after).not.toContain("Meet the new MausBot Cloud");
+    expect(after, "right after What's new closes").toContain("Title of first-card"); expect(after).not.toContain("Meet the new Desk Yantra Cloud");
     expect(launchNotice(), "What's new keeps the launch").toBe(WHATS_NEW_NOTICE);
     expect(await launch(), "a reload in the same launch").toContain("Title of first-card");
     press("Not now"); await flush();
@@ -1812,7 +1757,7 @@ describe("Update MausBot on your phone", () => {
 });
 
 describe("the Teams What's new", () => {
-  const TITLE = "MausBot is better with your team", GROK = "Move from Grok Bot";
+  const TITLE = "Desk Yantra is better with your team", GROK = "Move from Grok Bot";
   const POINTS = ["One shared bot for everyone: set it up once, everyone uses it.", "Team files and templates everyone&#x27;s bots can use.",
     "Private chats stay private, even from admins.", "$40 a month for 2 people, $20 for each extra person."];
   const TEAM = { id: "team-acme", name: "Acme", cloudPage: "https://admin.openmausbot.com/cloud" };
@@ -1851,7 +1796,7 @@ describe("the Teams What's new", () => {
     const html = await launch();
     for (const text of [TITLE, ...POINTS, "Start a team", "Not now"]) expect(html).toContain(text);
     for (const part of ['role="dialog"', 'aria-modal="true"', 'aria-labelledby="teams-popup-title"', 'data-teams-popup="start"', "teams-card-in", "teams-face-in"]) expect(html).toContain(part);
-    for (const other of [GROK, "Meet the new MausBot Cloud", STAR]) expect(html).not.toContain(other);
+    for (const other of [GROK, "Meet the new Desk Yantra Cloud", STAR]) expect(html).not.toContain(other);
     expect(launchNotice(), "it takes the launch").toBe(TEAMS_NOTICE);
     expect(launchDialogShown(), "MausBot's card waits for a later launch").toBe("notices");
     expect(steps()).toContain("seen");

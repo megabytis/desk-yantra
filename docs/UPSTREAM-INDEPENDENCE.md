@@ -14,6 +14,7 @@ The imported application still contains OpenMausBot names and service integratio
 - The packaged desktop no longer registers with the imported Composio broker by default. Organization onboarding and settings no longer offer an upstream admin portal button; the user must enter a portal URL.
 - The packaged desktop no longer restores the imported Cloud account at startup or offers its purchase flow. Direct account-client creation is refused while no Desk Yantra Cloud service exists. Saved remote workspaces, renderer links, relay modules and packaged network capture still need audit.
 - Electron sessions now cancel requests to known imported service domains, including saved workspace origins. Node fetches, subprocesses and links opened in the external browser need separate treatment and network capture.
+- The old Product Hunt launch card and built-in announcement pointing at the imported product were removed. Other imported Cloud and sponsor promotions remain under audit.
 - The main app/help/feedback links now target the Desk Yantra repository rather than upstream promotion.
 
 ## Release blockers
