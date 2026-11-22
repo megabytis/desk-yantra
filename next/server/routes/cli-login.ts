@@ -52,7 +52,7 @@ const pollBody = z.object({ verifier: z.string().min(32).max(128) }).strict();
 
 const digest = (value: string) => createHash("sha256").update(value).digest();
 const cleanLabel = (value: string | undefined) =>
-  (value ?? "").replace(/[\p{Cc}؜‎‏‪-‮⁦-⁩]/gu, "").trim().slice(0, 80) || "openmausbot CLI";
+  (value ?? "").replace(/[\p{Cc}؜‎‏‪-‮⁦-⁩]/gu, "").trim().slice(0, 80) || "desk-yantra CLI";
 
 /** Eight symbols from the pairing alphabet, `ABCD-EFGH`: shown in the terminal and on the card, never typed. */
 function matchingCode(): string {
@@ -88,7 +88,7 @@ export function createCliLogin(deps: CliLoginDeps) {
 
   async function start(req: IncomingMessage, res: ServerResponse): Promise<void> {
     if (!/^application\/json\b/i.test(String(req.headers["content-type"] ?? ""))) return void json(res, 415, { error: "send the sign-in request as JSON (content-type: application/json)" });
-    if (fromBrowser(req)) return void json(res, 403, { error: "a terminal sign-in starts from the openmausbot command, not a web page" });
+    if (fromBrowser(req)) return void json(res, 403, { error: "a terminal sign-in starts from the desk-yantra command, not a web page" });
     const refusal = deps.refusal();
     if (refusal) return void json(res, 403, { error: refusal });
     const local = !isProxied(req) && isLoopbackHost(req.headers.host);
@@ -99,7 +99,7 @@ export function createCliLogin(deps: CliLoginDeps) {
     const source = requestSource(req);
     const open = waiting();
     if (open.length >= MAX_WAITING || open.filter((request) => request.source === source).length >= MAX_WAITING_PER_SOURCE) {
-      return void json(res, 429, { error: "too many terminal sign-ins are waiting: allow or deny them in MausBot, or wait ten minutes" });
+      return void json(res, 429, { error: "too many terminal sign-ins are waiting: allow or deny them in Desk Yantra, or wait ten minutes" });
     }
     const at = now();
     const request: CliLoginRequest = {
@@ -133,7 +133,7 @@ export function createCliLogin(deps: CliLoginDeps) {
     if (request.state === "allowed") {
       return void json(res, 200, { state: "allowed", token: request.token, session: request.session, environment: deps.environment() });
     }
-    json(res, 403, { state: request.state, error: request.state === "denied" ? "the sign-in was denied in MausBot" : request.error ?? "the sign-in could not be completed" });
+    json(res, 403, { state: request.state, error: request.state === "denied" ? "the sign-in was denied in Desk Yantra" : request.error ?? "the sign-in could not be completed" });
   }
 
   /** Before the auth gate: asking and polling, which carry no session. Anything else under the path passes through. */

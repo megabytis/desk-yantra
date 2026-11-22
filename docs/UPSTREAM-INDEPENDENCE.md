@@ -18,6 +18,7 @@ The imported application still contains OpenMausBot names and service integratio
 - The main app/help/feedback links now target the Desk Yantra repository rather than upstream promotion.
 - The server team library catalog and fetch helpers no longer point by default to the upstream community team repository. When DESK_YANTRA_TEAM_LIBRARY_REPOSITORY is unset, the catalog returns empty and no outbound network request is made. The team library UI panel now renders the repository button only when an explicit repository URL is configured.
 - Rebranded template share export summaries in the server to Desk Yantra and updated expectations in server tests.
+- Rebranded CLI login route labels, browser refusal messages, and denial provenance to Desk Yantra (`next/server/routes/cli-login.ts`), and updated DOM card expectations (`next/src/components/CliLoginCard.dom.test.ts`).
 
 ## Release blockers
 
