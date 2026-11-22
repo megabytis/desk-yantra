@@ -770,3 +770,11 @@ The local real-Chromium browser checklist was run with the existing Playwright C
 Contributor: **OpenAI Codex (GPT-6)**. Removed the Electron main-process PostHog launch sender, the headless doctor's automatic upstream Cloud clock probe, and the default upstream bug-report and status endpoints. Bug reports now require an explicit operator endpoint; otherwise they return a local not-configured result without calling `fetch`. Tests: Electron launch analytics **1 passed**; bug-report and host-doctor **33 passed, 1 skipped**; server TypeScript check **passed**. Upstream Cloud/account/relay flows still need a separate audit and are not claimed independent.
 
 The packaged phone companion's upstream accounts default was also removed; only an explicit safe control-plane URL can enable it. `pnpm exec vitest run electron/companion-account-service.test.mjs`: **81 passed**. The Electron Cloud account client still has upstream defaults and remains a release blocker.
+
+### Owner-observed local workspace result — 2026-11-22
+
+Contributor: **OpenAI Codex (GPT-6)**. The owner reported that Desk Yantra created the requested directory and Python file on their computer through the new local-workspace path. This is a real-session observation reported by the owner; the resulting file contents were not independently inspected here. Native Hyprland screen control remains separate.
+
+### Connected-apps and organization defaults — 2026-11-22
+
+Contributor: **OpenAI Codex (GPT-6)**. Removed the packaged desktop's automatic third-party Composio broker URL. Broker registration now requires an explicitly configured URL. Removed the one-click upstream organization portal destination from settings and onboarding; organization enrollment requires the user to enter its portal URL. `pnpm exec vitest run electron/managed-composio.test.mjs`: **11 passed**. `pnpm exec tsc -b --pretty false`: **passed**. The Cloud account client and other upstream service paths remain unqualified.

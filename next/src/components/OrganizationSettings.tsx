@@ -6,7 +6,7 @@ import { Card, LearnMore, SETTINGS_INPUT, SettingRow, SettingsField, SettingsFol
 import { CompanyModels } from "./CompanyModels";
 
 const providerNames: Record<string, string> = { anthropic: "Anthropic", openai: "OpenAI", openrouter: "OpenRouter" };
-const DEFAULT_PORTAL_ORIGIN = "https://admin.openmausbot.com";
+const DEFAULT_PORTAL_ORIGIN = "https://example.com";
 const STATUS_TEXT: Record<ManagedMessageCode, LocaleKey> = {
   clearFailed: "organization.status.clearFailed",
   disconnected: "organization.status.disconnected",
@@ -114,8 +114,8 @@ export function OrganizationSettings({ simple = false }: { simple?: boolean } = 
           {licenseExpired && <span role="alert" className="block text-ink">{t("organization.licenseExpired")}</span>}
           {error && <span role="alert" className="block text-danger">{error}</span>}
         </>}>
-        <button type="button" disabled={busy} className="ui-button" data-organization-sign-in="" onClick={() => void perform(() => bridge.begin({ portalOrigin: DEFAULT_PORTAL_ORIGIN }))}>
-          {busy ? t("organization.working") : t("organization.useWorkSignIn")}
+        <button type="button" disabled={busy} className="ui-button" data-organization-sign-in="" onClick={() => setCustom(true)}>
+          {t("organization.customSignIn")}
         </button>
       </SettingRow>
       <SettingsFoldRow id="organization-address" title={t("organization.customTitle")} open={custom} onToggle={() => setCustom((open) => !open)}>

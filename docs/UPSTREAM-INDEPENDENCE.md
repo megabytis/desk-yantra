@@ -11,6 +11,7 @@ The imported application still contains OpenMausBot names and service integratio
 - The browser PostHog analytics implementation is replaced with a local no-op; the settings switch and bot-accessible setting are removed. `posthog-js` is removed from the package manifest and lockfile. Telemetry-only test suites were removed; the disabled policy has a focused regression.
 - The Electron main-process launch analytics hooks are now inert and cannot send to PostHog, even if an old local preference says analytics is on. The headless doctor no longer contacts the upstream Cloud to check clock offset. Bug reports and their status checks send no network request unless the operator explicitly configures a report endpoint.
 - The packaged desktop's phone companion no longer defaults to the upstream accounts control plane. A phone control-plane URL must be explicitly configured.
+- The packaged desktop no longer registers with the imported Composio broker by default. Organization onboarding and settings no longer offer an upstream admin portal button; the user must enter a portal URL.
 - The main app/help/feedback links now target the Desk Yantra repository rather than upstream promotion.
 
 ## Release blockers

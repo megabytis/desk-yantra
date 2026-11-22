@@ -22,10 +22,10 @@ describe("managed Composio desktop registration", () => {
     expect(managedComposioAccess("", { composioBrokerToken: TOKEN })).toBeNull();
   });
 
-  it("uses the default service only in a shipped build (the packaged app, a Cloud home's image); an explicit URL wins", () => {
-    expect(DEFAULT_MANAGED_COMPOSIO_BROKER_URL).toMatch(/^https:\/\//);
-    expect(managedComposioBrokerUrl(undefined, true)).toBe(DEFAULT_MANAGED_COMPOSIO_BROKER_URL);
-    expect(managedComposioBrokerUrl("  ", true)).toBe(DEFAULT_MANAGED_COMPOSIO_BROKER_URL);
+  it("requires an explicit broker even in a shipped build", () => {
+    expect(DEFAULT_MANAGED_COMPOSIO_BROKER_URL).toBe("");
+    expect(managedComposioBrokerUrl(undefined, true)).toBe("");
+    expect(managedComposioBrokerUrl("  ", true)).toBe("");
     expect(managedComposioBrokerUrl(undefined, false)).toBe("");
     expect(managedComposioBrokerUrl(" http://127.0.0.1:8787/ ", false)).toBe("http://127.0.0.1:8787");
     expect(managedComposioBrokerUrl("http://broker.example", true)).toBe("");
@@ -204,8 +204,9 @@ describe("keeping the desktop app off the managed service", () => {
     await expect(registerManagedComposio({ brokerUrl: managedComposioBrokerUrl(undefined, true), updateCredentials: vi.fn() })).resolves.toBeUndefined();
   });
 
-  it("any other value of the switch leaves the service on", () => {
+  it("an on switch alone cannot select an upstream broker", () => {
     vi.stubEnv("OMB_COMPOSIO_BROKER", "on");
-    expect(managedComposioBrokerUrl(undefined, true)).toBe(DEFAULT_MANAGED_COMPOSIO_BROKER_URL);
+    expect(managedComposioBrokerUrl(undefined, true)).toBe("");
+    expect(managedComposioBrokerUrl("https://broker.example", true)).toBe("https://broker.example");
   });
 });
