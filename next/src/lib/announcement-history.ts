@@ -2,6 +2,7 @@
 // person last looked. The built-in ones are listed here, one entry each (docs/announcements.md says how to add one); the
 // cards from the project's announcements file come from src/lib/announcements.ts.
 import { useSyncExternalStore } from "react";
+import { importedPromotionsEnabled } from "@/lib/imported-promotions";
 import { BOAT_OFFER, boatClaimMailto } from "@/lib/boat-offer";
 import type { CloudSource } from "@/lib/cloud-plan";
 import type { OnboardingStatus } from "@/lib/onboarding";
@@ -85,7 +86,7 @@ export type HistoryItem =
 export function announcementHistory({ facts, cards, feedUpdatedAt, now }: {
   facts: HistoryFacts; cards: readonly AnnouncementCard[]; feedUpdatedAt: number | null; now: number;
 }): HistoryItem[] {
-  const builtIn: HistoryItem[] = BUILT_IN_ANNOUNCEMENTS.filter(entry => entry.for(facts)).map(entry => ({
+  const builtIn: HistoryItem[] = BUILT_IN_ANNOUNCEMENTS.filter(entry => entry.for(facts) && (entry.id === GROK_MOVE_NOTICE || importedPromotionsEnabled())).map(entry => ({
     source: "built-in", id: entry.id, at: Date.parse(entry.date), entry, ended: typeof entry.until === "number" && now >= entry.until,
   }));
   const feed: HistoryItem[] = cards.map(card => ({ source: "feed", id: card.id, at: card.starts ? Date.parse(card.starts) : feedUpdatedAt ?? now, card }));

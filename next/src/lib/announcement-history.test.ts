@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+const promotions = vi.hoisted(() => ({ enabled: true }));
+vi.mock("@/lib/imported-promotions", () => ({ importedPromotionsEnabled: () => promotions.enabled }));
 vi.mock("@/state/store", () => ({ api: vi.fn() }));
 import { api } from "@/state/store";
 import { EMPTY_ONBOARDING, type OnboardingStatus } from "@/lib/onboarding";
@@ -18,6 +20,7 @@ const ids = (facts: HistoryFacts, cards: AnnouncementCard[] = [], feedUpdatedAt:
 
 let storage: Map<string, string>;
 beforeEach(() => {
+  promotions.enabled = true;
   storage = new Map();
   vi.stubGlobal("localStorage", { getItem: (key: string) => storage.get(key) ?? null, setItem: (key: string, value: string) => storage.set(key, value) });
   vi.mocked(api).mockReset();
@@ -25,6 +28,10 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("the built-in announcements", () => {
+  it("hides imported campaigns while keeping the migration notice", () => {
+    promotions.enabled = false;
+    expect(ids(desktopHere)).toEqual([GROK_MOVE_NOTICE]);
+  });
   it("are one registry, each with its notice id, a date and its words, newest first, Teams at the top", () => {
     expect(ids(desktopHere)).toEqual([TEAMS_NOTICE, MODELGO_OFFER_NOTICE, GROK_MOVE_NOTICE, WHATS_NEW_NOTICE, BOAT_OFFER_NOTICE, CLOUD_INTRO]);
     for (const entry of BUILT_IN_ANNOUNCEMENTS) expect(Number.isFinite(Date.parse(entry.date)), entry.id).toBe(true);
