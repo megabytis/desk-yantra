@@ -22,7 +22,7 @@ describe("pinned desktop browser preparation", () => {
       "linux-x64": [119695587, "7728775cf4a35464cd81c8eea2d44d6d32ccc0bd1edfa75aea7f32d146963d63"],
       "win32-x64": [120466147, "9f405cfaf7bc08bf9e046e653cd3086c0faa1d4e25907de857f7e7f093a20122"],
     };
-    for (const target of SUPPORTED_BROWSER_TARGETS) {
+    for (const target of SUPPORTED_BROWSER_TARGETS.filter((value) => value !== "win32-x64")) {
       const spec = browserBundleSpec(target);
       expect([spec.chrome.bytes, spec.chrome.sha256]).toEqual(pins[target]);
       expect(spec.chrome.url).toMatch(/^https:\/\/storage.googleapis.com\/chrome-for-testing-public\/153\.0\.8010\.47\/[^/]+\/chrome-headless-shell-[^/]+\.zip$/);
@@ -31,12 +31,13 @@ describe("pinned desktop browser preparation", () => {
       expect(spec.engine).toMatchObject({ bytes: engine.bytes, sha256: engine.sha256, asset: engine.asset });
       expect(spec.chrome.license).toMatch(/LICENSE\.headless_shell$/);
     }
+    expect(() => browserBundleSpec("win32-x64")).toThrow(/imported Windows browser engine/);
   });
 
   it("chooses host targets and rejects unsupported/cross-directory inputs", () => {
     expect(targetsForPreparation({ platform: "darwin", arch: "arm64" })).toEqual(["darwin-arm64", "darwin-x64"]);
     expect(targetsForPreparation({ platform: "darwin", arch: "arm64", current: true })).toEqual(["darwin-arm64"]);
-    expect(targetsForPreparation({ platform: "win32", arch: "x64" })).toEqual(["win32-x64"]);
+    expect(() => targetsForPreparation({ platform: "win32", arch: "x64" })).toThrow(/imported Windows browser engine/);
     expect(targetsForPreparation({ target: "linux-x64" })).toEqual(["linux-x64"]);
     expect(targetsForPreparation({ platform: "linux", arch: "arm64" })).toEqual(["linux-arm64"]);
     for (const target of ["win32-arm64", "../darwin-arm64", "freebsd-x64"]) expect(() => browserBundleSpec(target)).toThrow(/Unsupported/);
@@ -45,7 +46,7 @@ describe("pinned desktop browser preparation", () => {
 
   it("has stable resource-relative paths on every platform", () => {
     const root = join("app", "resources", "browser-engine");
-    for (const target of SUPPORTED_BROWSER_TARGETS) {
+    for (const target of SUPPORTED_BROWSER_TARGETS.filter((value) => value !== "win32-x64")) {
       const spec = browserBundleSpec(target);
       const paths = browserBundlePaths(root, target);
       expect(paths.engine).toBe(join(root, target.startsWith("win32") ? "agent-browser.exe" : "agent-browser"));

@@ -53,6 +53,10 @@ const RELEASES = new Map<string, AgentBrowserReleaseAsset>([
 ]);
 
 export function agentBrowserReleaseUrl(asset: AgentBrowserReleaseAsset): string {
+  const candidate = asset.url ? new URL(asset.url) : null;
+  if (candidate?.hostname === "github.com" && candidate.pathname.toLowerCase().startsWith("/milind-soni/openmausbot/")) {
+    throw new Error("The imported Windows browser engine is unavailable in Desk Yantra until an independent build is verified.");
+  }
   return asset.url ?? `https://github.com/vercel-labs/agent-browser/releases/download/v${AGENT_BROWSER_VERSION}/${asset.asset}`;
 }
 

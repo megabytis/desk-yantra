@@ -416,10 +416,10 @@ export async function installAgentBrowserBinary(options: {
   const platform = options.platform ?? process.platform;
   const asset = options.asset ?? resolveAgentBrowserReleaseAsset(platform, options.arch ?? process.arch, options.musl ?? isMusl(platform));
   if (!asset) throw new Error(`agent-browser publishes no build for ${platform}-${options.arch ?? process.arch}.`);
+  const url = agentBrowserReleaseUrl(asset);
   const destination = pinnedBinaryPath(options.dataDir, platform, options.arch);
   const directory = join(destination, "..");
   mkdirSync(directory, { recursive: true, mode: 0o700 });
-  const url = agentBrowserReleaseUrl(asset);
   options.log?.(`downloading agent-browser ${agentBrowserReleaseVersion(asset)} (${Math.round(asset.bytes / 1024 / 1024)} MB, digest pinned)`);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), DOWNLOAD_TIMEOUT_MS);

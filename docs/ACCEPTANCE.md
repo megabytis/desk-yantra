@@ -826,3 +826,7 @@ Contributor: **OpenAI Codex (GPT-6)**. A new default gate makes the imported com
 ### Phone relay default gate — 2026-11-22
 
 Contributor: **OpenAI Codex (GPT-6)**. When `OMB_PHONE_RELAY=1` has no explicit control-plane URL, relay startup now returns off before creating a key or connection. Runtime refusal messages no longer refer to OpenMausBot. `pnpm exec vitest run server/phone-relay.test.ts --reporter=dot`: **15 passed, 0 failed** outside the sandbox; the sandbox denied the loopback fixture with `listen EPERM`. `pnpm exec tsc -b --pretty false`: **passed**. This verifies the default gate and simulated relay paths, not a packaged desktop network capture or a production relay service.
+
+### Windows browser-engine upstream download blocked — 2026-11-22
+
+Contributor: **OpenAI Codex (GPT-6)**. The Windows browser-engine asset is still pinned to an imported OpenMausBot release. The shared URL resolver now refuses that destination, and on-demand installation does so before creating files or calling fetch. Browser packaging for Windows fails clearly until an independent Windows binary is reviewed and tested. `pnpm exec vitest run server/browser-engine.test.ts scripts/prepare-browser.test.mjs --reporter=dot`: **99 passed, 0 failed**. `pnpm exec tsc -b --pretty false`: **passed**. No native Windows runtime smoke was performed.

@@ -642,7 +642,7 @@ describe("finding the browser engine", () => {
     expect(resolveAgentBrowserReleaseAsset("darwin", "arm64")!.target).toBe("darwin-arm64");
   });
 
-  it("pins the native-verified Windows revision in both download and desktop manifests", () => {
+  it("keeps the old Windows pin for recognition but refuses its imported release URL", () => {
     const asset = resolveAgentBrowserReleaseAsset("win32", "x64")!;
     expect(asset).toEqual({
       target: "win32-x64", version: "0.36.0-omb.1",
@@ -651,10 +651,8 @@ describe("finding the browser engine", () => {
       bytes: 13806080, sha256: "33bee834f6a6072ec8688b0914726e0262874d758f69f27e8baf7eaac6b5ed15",
     });
     expect(agentBrowserReleaseVersion(asset)).toBe("0.36.0-omb.1");
-    expect(browserBundleSpec("win32-x64").engine).toEqual({
-      version: asset.version, asset: asset.asset, url: asset.url,
-      bytes: asset.bytes, sha256: asset.sha256, executable: "agent-browser.exe",
-    });
+    expect(() => agentBrowserReleaseUrl(asset)).toThrow(/imported Windows browser engine/);
+    expect(() => browserBundleSpec("win32-x64")).toThrow(/imported Windows browser engine/);
     for (const [platform, arch] of [["darwin", "arm64"], ["darwin", "x64"], ["linux", "arm64"], ["linux", "x64"]] as const) {
       expect(agentBrowserReleaseVersion(resolveAgentBrowserReleaseAsset(platform, arch))).toBe("0.37.0");
     }
@@ -681,7 +679,7 @@ describe("finding the browser engine", () => {
     expect(agentBrowserReleaseUrl(revised)).toBe(revised.url);
   });
 
-  it.each(SUPPORTED_BROWSER_TARGETS)("uses the complete %s desktop bundle before old downloaded engines", (target) => {
+  it.each(SUPPORTED_BROWSER_TARGETS.filter((target) => target !== "win32-x64"))("uses the complete %s desktop bundle before old downloaded engines", (target) => {
     const [platform, arch] = target.split("-");
     const env = { OMB_RESOURCES_PATH: join(tmpdir(), "OMB resources"), PATH: "" };
     const bundle = browserBundlePaths(join(env.OMB_RESOURCES_PATH, "browser-engine"), target);
@@ -854,7 +852,7 @@ describe("finding the browser engine", () => {
       const asset = resolveAgentBrowserReleaseAsset(platform, arch);
       expect(asset, `${platform}-${arch}`).not.toBeNull();
       expect(asset?.sha256).toMatch(/^[0-9a-f]{64}$/u);
-      if (asset?.url) expect(agentBrowserReleaseUrl(asset)).toBe(asset.url);
+      if (asset?.url) expect(() => agentBrowserReleaseUrl(asset)).toThrow(/imported Windows browser engine/);
       else expect(agentBrowserReleaseUrl(asset!)).toContain(`/v${AGENT_BROWSER_VERSION}/`);
     }
     expect(resolveAgentBrowserReleaseAsset("linux", "x64", true)?.target).toBe("linux-musl-x64");
@@ -866,6 +864,15 @@ describe("finding the browser engine", () => {
 });
 
 describe("installing the browser engine", () => {
+  it("refuses the imported Windows binary before creating files or fetching it", async () => {
+    const dataDir = mkdtempSync(join(tmpdir(), "desk-windows-engine-refusal-"));
+    scratch.push(dataDir);
+    const fetchImpl = vi.fn(async () => { throw new Error("unexpected request"); });
+    await expect(installAgentBrowserBinary({ dataDir, platform: "win32", arch: "x64", fetchImpl })).rejects.toThrow(/imported Windows browser engine/);
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(existsSync(join(dataDir, "tools"))).toBe(false);
+  });
+
   it("downloads the pinned asset, verifies size and digest, and only then names the file", async () => {
     const dataDir = mkdtempSync(join(tmpdir(), "omb-engine-install-"));
     scratch.push(dataDir);
