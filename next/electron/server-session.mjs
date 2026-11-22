@@ -27,11 +27,24 @@ export function targetsServer(url, serverPort) {
   }
 }
 
+export function importedServiceUrl(url) {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return host === "openmausbot.com" || host.endsWith(".openmausbot.com") ||
+      host === "mausbot.cloud" || host.endsWith(".mausbot.cloud") ||
+      host === "mausbot.si" || host.endsWith(".mausbot.si") ||
+      host === "omb-cloud-staging.fly.dev" || host === "openmausbot-composio.milindsoni201.workers.dev";
+  } catch {
+    return false;
+  }
+}
+
 /**
  * `ownerToken()` is the desktop capability, or null while there is none to send. Chromium adds the header below
  * JavaScript, on http: and ws: alike, so a shell using curl cannot impersonate the person at the desktop.
  */
 export function installServerSessions({ app, defaultSession, serverPort, ownerToken }) {
+  defaultSession.webRequest.onBeforeRequest((details, callback) => callback({ cancel: importedServiceUrl(details.url) }));
   defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
     const token = ownerToken();
     let owns = false;
@@ -44,7 +57,7 @@ export function installServerSessions({ app, defaultSession, serverPort, ownerTo
   });
   app.on("session-created", (created) => {
     if (created === defaultSession) return;
-    created.webRequest.onBeforeRequest((details, callback) => callback({ cancel: targetsServer(details.url, serverPort()) }));
+    created.webRequest.onBeforeRequest((details, callback) => callback({ cancel: targetsServer(details.url, serverPort()) || importedServiceUrl(details.url) }));
   });
 }
 

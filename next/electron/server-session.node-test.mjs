@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { createServer } from "node:net";
 import test from "node:test";
 
-import { installServerSessions, reportOwnListeners, targetsServer } from "./server-session.mjs";
+import { importedServiceUrl, installServerSessions, reportOwnListeners, targetsServer } from "./server-session.mjs";
 
 const SERVER_PORT = 48799;
 
@@ -58,7 +58,28 @@ test("no session but the app window's may reach the server, in any spelling of t
     assert.equal(await request(viewer, url), false, url);
   }
   created(defaultSession);
-  assert.equal(defaultSession.hooks.request, undefined, "the app window's own session is never cancelled");
+  assert.equal(await request(defaultSession, `http://127.0.0.1:${SERVER_PORT}/api/bots`), false, "the app window can use its local server");
+});
+
+test("all Electron sessions refuse imported service destinations", async () => {
+  const { defaultSession, created } = install();
+  const viewer = created(fakeSession());
+  for (const url of [
+    "https://cloud.openmausbot.com/api/cloud/desktop/session",
+    "https://relay1.openmausbot.com/connect",
+    "https://example.mausbot.cloud/",
+    "https://accounts.mausbot.si/",
+    "https://omb-cloud-staging.fly.dev/",
+    "https://openmausbot-composio.milindsoni201.workers.dev/v1/me",
+  ]) {
+    assert.equal(importedServiceUrl(url), true, url);
+    assert.equal(await request(defaultSession, url), true, url);
+    assert.equal(await request(viewer, url), true, url);
+  }
+  for (const url of ["https://example.com/", "https://openmausbot.com.evil.example/", "http://127.0.0.1:6080/"]) {
+    assert.equal(importedServiceUrl(url), false, url);
+    assert.equal(await request(defaultSession, url), false, url);
+  }
 });
 
 test("every session main creates gets the guard before it loads anything", () => {
