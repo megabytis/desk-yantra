@@ -41,7 +41,10 @@ export const HEADLESS_USAGE = `Drive a running workspace (scripts, CI, other age
 
 /** The usage text, its commands written the way this CLI was started (`npx desk-yantra …`). */
 export function usage(prefix = "desk-yantra"): string {
-  return USAGE.split("\n").map((line) => line.replace(/^(\s+)desk-yantra(?= )/, `$1${prefix}`)).join("\n");
+  const footer = prefix.startsWith("docker compose exec ")
+    ? "In the container, run `desk-yantra`. From the host, use `docker compose exec omb desk-yantra`."
+    : "From this source checkout, run `pnpm omb`. Node 24+ is required.";
+  return USAGE.split("\n").map((line) => line.replace(/^(\s+)desk-yantra(?= )/, `$1${prefix}`)).join("\n").replace("From this source checkout, run `pnpm omb`. Node 24+ is required.", footer);
 }
 
 export const USAGE = `desk-yantra — your self-hosted personal AI agent workspace, ready in a few steps
