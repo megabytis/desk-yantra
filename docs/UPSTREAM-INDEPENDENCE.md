@@ -33,6 +33,7 @@ The imported application still contains OpenMausBot names and service integratio
 - The legacy CLI account-login path now explains that it needs an explicitly configured HTTPS control plane and no longer prompts for an OpenMausBot account. Printed CLI usage still includes imported command and account wording and remains in the audit.
 - Printed CLI help now uses Desk Yantra commands, describes the explicit control-plane requirement, and points to `pnpm omb` from the source checkout. Unsupported global npm install instructions were removed. A direct `--help` scan found no imported product names. Other CLI runtime messages remain to audit.
 - Desktop readiness and recovery, approval timeout notes, backup filenames and notices, VPS diagnostics, webhook notices and request user-agent, model update errors, X research guidance, and server error text now use Desk Yantra or neutral wording. The `.ombbackup` extension and protocol identifiers remain for compatibility. Other source strings and packaged network capture remain open.
+- Electron computer-control, screen lease, data-directory lease, update, companion account, computer-sharing and cloud transfer errors now use Desk Yantra or neutral wording. Persisted lease records and protocol identifiers remain compatible. Imported Cloud/account implementation and packaged network behavior remain release blockers.
 
 ## Release blockers
 
