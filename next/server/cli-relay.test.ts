@@ -14,6 +14,21 @@ const status = (over: Partial<PhoneRelayStatus> = {}): PhoneRelayStatus => ({ re
 const invite = "openmausbot://pair?address=relay-only.invalid%3A443&token=omb_pair_x&e2e=eyJ2IjoxfQ";
 
 describe("openmausbot serve --relay", () => {
+  it("explains that account sign-in needs an explicitly configured service", async () => {
+    vi.stubEnv("OMB_CONTROL_PLANE_URL", "");
+    const dataDir = mkdtempSync(join(tmpdir(), "desk-login-unconfigured-"));
+    try {
+      const errors: string[] = [];
+      const options = parseArgs(["login", "--email", "owner@example.test", "--data-dir", dataDir], {});
+      if ("error" in options) throw new Error(options.error);
+      expect(await runLogin(options, { log: () => undefined, error: (line) => errors.push(line), ask: async () => { throw new Error("unexpected prompt"); } })).toBe(1);
+      expect(errors).toEqual(["Account sign-in needs an explicit HTTPS OMB_CONTROL_PLANE_URL; no account service is configured."]);
+    } finally {
+      vi.unstubAllEnvs();
+      await removeTempDir(dataDir);
+    }
+  });
+
   it("is off unless asked for, joins any way in but --tunnel, and never a local start", () => {
     expect(parseArgs(["serve"], {})).not.toHaveProperty("relay");
     expect(parseArgs(["serve", "--relay"], {})).toMatchObject({ command: "serve", relay: true, tunnel: false });

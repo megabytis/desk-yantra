@@ -838,3 +838,7 @@ Contributor: **OpenAI Codex (GPT-6)**. Replaced imported product names in displa
 ### Live diagnostic branding — 2026-11-23
 
 Contributor: **OpenAI Codex (GPT-6)**. Corrected imported product names in app-trigger errors, model gateway diagnostics, browser repair text, restart notices, computer-move errors, and exported bot package guidance. `pnpm exec vitest run server/app-triggers.test.ts server/agent-endpoint-models.test.ts server/bot-package.test.ts server/browser-engine.test.ts server/burst/manager.test.ts --reporter=dot`: **182 passed, 0 failed** outside the sandbox (the sandbox loopback fixture hung and its run was interrupted). `node electron/bot-move-main.node-test.mjs`: **10 passed, 0 failed**. `pnpm exec tsc -b --pretty false`: **passed**. Other runtime strings and packaged network capture remain open.
+
+### CLI account guidance — 2026-11-23
+
+Contributor: **OpenAI Codex (GPT-6)**. The legacy account-login command now reports that no account service is configured unless an explicit HTTPS `OMB_CONTROL_PLANE_URL` is supplied. Its email prompt no longer names the imported product. `pnpm exec vitest run server/cli-relay.test.ts --reporter=dot`: **8 passed, 0 failed** outside the sandbox. `pnpm exec tsc -b --pretty false`: **passed**. The broader `server/cli.test.ts` run was interrupted after exposing preexisting assertions for `openmausbot` command text and long-running tunnel fixtures; it is not claimed passing. CLI usage still needs correction.
