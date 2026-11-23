@@ -51,7 +51,7 @@ describe("the headless command line", () => {
     expect(out[0]).toContain("Give a bot or room one job and wait until it, and every teammate it asked, is done.");
     expect(await runHeadless(["team", "apply", "--help"], { io })).toBe(0);
     expect(out[1]).toContain("a second apply prints \"No changes.\"");
-    expect(USAGE).toContain("openmausbot run BOT \"do this\"         give a bot one job and wait until it and every teammate it asked are done");
+    expect(USAGE).toContain("desk-yantra run BOT \"do this\"         give a bot one job and wait until it and every teammate it asked are done");
   });
 
   it("is reachable through the published entry, which keeps every other command as it was", () => {
@@ -63,7 +63,7 @@ describe("the headless command line", () => {
     expect(refused.status).toBe(2);
     expect(JSON.parse(refused.stdout)).toMatchObject({ ok: false, exitCode: 2 });
     const usage = spawnSync(process.execPath, ["--experimental-strip-types", entry, "--help"], { encoding: "utf8" });
-    expect(usage.stdout).toContain("openmausbot serve [--port 8799]");
+    expect(usage.stdout).toContain("desk-yantra serve [--port 8799]");
     expect(usage.stdout).toContain("Drive a running workspace");
   });
 

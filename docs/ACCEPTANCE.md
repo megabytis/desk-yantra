@@ -842,3 +842,7 @@ Contributor: **OpenAI Codex (GPT-6)**. Corrected imported product names in app-t
 ### CLI account guidance — 2026-11-23
 
 Contributor: **OpenAI Codex (GPT-6)**. The legacy account-login command now reports that no account service is configured unless an explicit HTTPS `OMB_CONTROL_PLANE_URL` is supplied. Its email prompt no longer names the imported product. `pnpm exec vitest run server/cli-relay.test.ts --reporter=dot`: **8 passed, 0 failed** outside the sandbox. `pnpm exec tsc -b --pretty false`: **passed**. The broader `server/cli.test.ts` run was interrupted after exposing preexisting assertions for `openmausbot` command text and long-running tunnel fixtures; it is not claimed passing. CLI usage still needs correction.
+
+### CLI help correction — 2026-11-23
+
+Contributor: **OpenAI Codex (GPT-6)**. Printed help now uses Desk Yantra commands, explains the external control-plane requirement for tunnel and relay access, and gives the supported source-checkout command. Removed unverified global npm install guidance. `pnpm exec vitest run server/headless/main.test.ts server/cli-invocation.test.ts --reporter=dot`: **7 passed, 0 failed** outside the sandbox. `pnpm exec tsc -b --pretty false`: **passed**. Direct `node --experimental-strip-types server/openmausbot.ts --help` exited **0**; a scan of its output found no imported product names or removed npm claims. Other CLI runtime text and the full legacy CLI suite remain open.
