@@ -29,6 +29,7 @@ The imported application still contains OpenMausBot names and service integratio
 - Rebranded template share export summaries in the server to Desk Yantra and updated expectations in server tests.
 - Rebranded CLI login route labels, browser refusal messages, and denial provenance to Desk Yantra (`next/server/routes/cli-login.ts`), and updated DOM card expectations (`next/src/components/CliLoginCard.dom.test.ts`).
 - All 16 shipped locale catalogs now display Desk Yantra instead of imported product names in translated values. The locale generator prompts use Desk Yantra. Seven English help messages with obsolete CLI commands or unsupported Windows setup were corrected; 45 corresponding non-English command-help values temporarily use accurate English text. Existing localization keys and protocol identifiers remain for compatibility. The missing Brazilian Portuguese `chat.notice.computerNotReady` entry was added. Locale catalog check and 59 focused tests passed; TypeScript check passed.
+- Several live server and desktop paths now use Desk Yantra in app-trigger errors, model gateway diagnostics, browser bundle repair text, restart notices, computer-move errors, and exported bot package guidance. These paths were covered by 182 focused server tests, 10 Electron tests, and the TypeScript check. Other imported runtime strings remain to audit.
 
 ## Release blockers
 
